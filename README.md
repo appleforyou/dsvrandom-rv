@@ -5,7 +5,7 @@ RV is a work-in-progress randomizer for Order of Ecclesia, focused on providing 
 1. Dracula's Castle is unlocked on the world map immediately, without having to fight Albus. You still need items to get anywhere in it, though.
 2. Logic is customizable so that you could have glyphs and items randomized in separate pools - the Magnes glyph would not appear where equipment was in the vanilla game, for example.
 
-The intent of RV is to create more variety in the ways that the player can approach a given seed, and also in the process decrease the average length of a seed while increasing the likelihood of challenging boss fights. It was ultimately created to satisfy my own wishes for how I want to play seeds, but I think the end result should be something closer to the difficulty curve of the original game.
+The intent of RV is to create more variety in the ways that the player can approach a given seed, and offer more options for difficulty settings. Default settings should also in the process decrease the average length of a seed while increasing the likelihood of challenging boss fights. It was ultimately created to satisfy my own wishes for how I want to play seeds, but I think the end result should be something closer to the difficulty curve of the original game.
 
 ### How to get it?
 
