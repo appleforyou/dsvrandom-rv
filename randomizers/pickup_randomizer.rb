@@ -1,5 +1,9 @@
 
 module PickupRandomizer
+require_relative 'ooe_locations'
+require_relative 'ooe_items'
+require_relative 'ooe_checker'
+  
   VILLAGER_NAME_TO_EVENT_FLAG = {
     :villagerjacob => 0x2A,
     :villagerabram => 0x2D,
@@ -62,8 +66,553 @@ module PickupRandomizer
     :portrait_13th_street
   ]
   
-  def randomize_pickups_completably(&block)
-    spoiler_log.puts
+  #RV functions. Base version functions are kept for now because RV doesn't yet support some
+  #features like map randomization. May remove them once functionality is restored.
+  
+  #Randomizes the tutorial glyph from Barlowe before other glyphs are randomized.
+  def rv_randomize_starting_glyph(checker)
+    # Glyph given by Barlowe.
+    # We randomize this, but only to a starter weapon glyph, not to any glyph.
+    reset_rng()
+    possible_starter_weapons = ["Confodere", "Secare", "Hasta", "Macir", "Arcus", "Ascia", "Falcis", "Culter", "Grando", "Vol Fulgur"]
+    pickup_name = possible_starter_weapons.sample(random: rng)
+    pickup_id = OoEItems.items[pickup_name][:id]
+    game.fs.load_overlay(42)
+    game.fs.write(0x022C3980, [0xE3A01000].pack("V"))
+    game.fs.write(0x022C3980, [pickup_id+1].pack("C"))
+    checker.add_item(pickup_name)
+    @ooe_starter_glyph_id = pickup_id # Tell other randomization options what this glyph is so they can handle it properly
+  end
+  
+  def rv_randomize_pickups_completably(checker, &block)
+    #Not currently used for anything, but might factor into future changes (randomized Glyph Union?)
+    checker.add_item("Casual Clothes")
+    checker.add_item("Lizard Tail")
+    checker.add_item("Glyph Union")
+    checker.add_item("Torpor")
+    
+    ooe_item_tweaks()
+    checker.add_item("Glyph Sleeve")
+    
+    total_progression_pickups = checker.all_progression_pickups.length
+    rv_place_progression_pickups(checker) do |progression_pickups_placed|
+      percent_done = progression_pickups_placed.to_f / total_progression_pickups
+      yield percent_done
+    end
+    
+    if !checker.game_beatable?
+      raise "Bug: Game is not beatable on this seed!\nThis error shouldn't happen.\nSeed: #{@seed}\n\nItems:\n#{checker.current_items.join(", ")}"
+    end
+  end
+  
+  def rv_place_non_progression_pickups(checker)
+    remaining_locations = checker.get_accessible_locations().reject {|loc| checker.progression_locations.include?(loc[:id])}
+    remaining_locations.shuffle!(random: rng)
+    
+    # Do event glyphs first. This is so they don't reuse a glyph already used by a glyph statue.
+    # If the player got the one from the glyph statue first then the one in the event/puzzle wouldn't appear, breaking the event/puzzle.
+    ooe_event_glyph_locations = remaining_locations.select{|loc| loc[:type].include?("Event")}
+    ooe_event_glyph_locations.each do |loc|
+      pickup_id = get_unplaced_non_progression_skill()
+      rv_change_entity_location_to_pickup_id(loc, pickup_id)
+    end
+    remaining_locations = remaining_locations.reject {|loc1| ooe_event_glyph_locations.any? {|loc2| loc2[:id] == loc1[:id]} }
+    
+    remaining_locations.each_with_index do |loc, i|
+      if loc[:container] == ("Spell")
+        # Boss
+        pickup_id = get_unplaced_non_progression_skill()
+      elsif loc[:id] == "08-02-06_01"
+        # Tin man's strength ring blue chest. Can't be a glyph.
+        pickup_id = get_unplaced_non_progression_item_that_can_be_an_arm_shifted_immediate()
+      elsif options[:rv_split_pools] && loc[:type].include?("Glyph")
+        pickup_id = get_unplaced_non_progression_skill()
+      else
+        # Pickup
+        
+        # Select the type of pickup weighed by difficulty options.
+        weights = {
+          money: @difficulty_settings[:money_placement_weight],
+          item: @difficulty_settings[:item_placement_weight],
+        }
+        weights[:max_up] = @difficulty_settings[:max_up_placement_weight]
+        weights[:skill] = options[:rv_split_pools] ? 0 : @difficulty_settings[:glyph_placement_weight]
+        
+        weighted_pickup_types = {}
+        weights_sum = weights.values.reduce(:+)
+        weights.each do |type, weight|
+          weighted_pickup_types[type] = weight.to_f / weights_sum
+        end
+        
+        random_pickup_type = weighted_pickup_types.max_by{|_, weight| rng.rand ** (1.0 / weight)}.first
+        
+        case random_pickup_type
+        when :money
+          pickup_id = :money
+        when :max_up
+          pickup_id = @max_up_items.sample(random: rng)
+        when :skill
+          pickup_id = get_unplaced_non_progression_skill()
+        when :item
+          if loc[:container] == "Wall"
+            # Don't let relics be inside breakable walls in OoE.
+            # This is because they need to be inside a chest, and chests can't be hidden.
+            pickup_id = get_unplaced_non_progression_item_except_ooe_relics()
+          else
+            pickup_id = get_unplaced_non_progression_item()
+          end
+        end
+      end
+      
+      @used_non_progression_pickups << pickup_id
+      
+      if loc[:type].include?("Villager")
+        spoiler_log.puts "This shouldn't have happened!"
+      end
+      rv_change_entity_location_to_pickup_id(loc, pickup_id)
+    end
+  end
+  
+  def rv_initialize_all_non_progression_pickups(checker)
+    if !@all_non_progression_pickups.nil?
+      raise "all_non_progression_pickups was initialized too early."
+    end
+    
+    @all_non_progression_pickups = begin
+      all_progression_ids = checker.all_progression_pickups.map {|key, item| item[:id]}
+      
+      all_non_progression_pickups = PICKUP_GLOBAL_ID_RANGE.to_a - all_progression_ids
+      
+      all_non_progression_pickups -= NONRANDOMIZABLE_PICKUP_GLOBAL_IDS
+      
+      all_non_progression_pickups -= @max_up_items
+      
+      if room_rando?
+        all_non_progression_pickups -= [MAGICAL_TICKET_GLOBAL_ID]
+      end
+      
+      all_non_progression_pickups
+    end
+  end
+
+  def rv_change_entity_location_to_pickup_id(location, pickup_id)
+    entity = get_entity_by_location_str(location[:id])
+    
+    if location[:type].include?("Event")
+      # Event with a hardcoded item/glyph.
+      change_hardcoded_event_pickup(entity, pickup_id)
+      return
+    end
+    
+    if location[:id] == "08-02-06_01" # Strength Ring blue chest spawned by the searchlights after you kill the Tin Man
+      if entity.var_a != 2
+        raise "Searchlights are not of type 2 (Tin Man spawn)"
+      end
+      
+      game.fs.replace_arm_shifted_immediate_integer(0x022A194C, pickup_id+1)
+    elsif RANDOMIZABLE_VILLAGER_NAMES.include?(pickup_id)
+      # Villager
+      
+      room_str = location[:id][0,8]
+      @rooms_that_already_have_an_event << room_str
+      
+      entity.type = 2
+      entity.subtype = 0x89
+      entity.var_a = VILLAGER_NAME_TO_EVENT_FLAG[pickup_id]
+      entity.var_b = 0
+      
+      entity.write_to_rom()
+      
+      if pickup_id == :villageranna
+        # Anna must have Tom in her room, or her event will crash the game.
+        room = entity.room
+        cat = Entity.new(room, room.fs)
+        
+        cat.x_pos = entity.x_pos
+        cat.y_pos = entity.y_pos
+        cat.type = 2
+        cat.subtype = 0x3F
+        cat.var_a = 3
+        cat.var_b = 1
+        
+        room.entities << cat
+        room.write_entities_to_rom()
+        
+        # Remove the Tom in Anna's original room since he's not needed there.
+        original_cat = game.areas[7].sectors[0].rooms[6].entities[2]
+        original_cat.type = 0
+        original_cat.write_to_rom()
+      end
+    
+    elsif entity.type == 1
+      # Boss
+      
+      item_type, item_index = game.get_item_type_and_index_by_global_id(pickup_id)
+      
+      if !PICKUP_SUBTYPES_FOR_SKILLS.include?(item_type)
+        raise "Can't make boss drop required item"
+      end
+      
+      enemy_dna = game.enemy_dnas[entity.subtype]
+      enemy_dna["Glyph"] = pickup_id + 1
+      
+      enemy_dna.write_to_rom()
+    else
+      pickup_flag = get_unused_pickup_flag_for_entity(entity)
+      
+      if entity.is_glyph? && !entity.is_hidden_pickup?
+        entity.y_pos += 0x20
+      end
+      
+      if pickup_id == :money
+        if entity.is_hidden_pickup?
+          entity.type = 7
+        else
+          entity.type = 4
+        end
+        entity.subtype = 1
+        entity.var_a = pickup_flag
+        use_pickup_flag(pickup_flag)
+        entity.var_b = rng.rand(4..6) # 500G, 1000G, 2000G
+        
+        entity.write_to_rom()
+        return
+      end
+      
+      if (0x6F..0x74).include?(pickup_id)
+        # Relic. Must go in a chest, if you leave it lying on the ground it won't autoequip.
+        entity.type = 2
+        entity.subtype = 0x16
+        entity.var_a = pickup_id + 1
+        entity.var_b = pickup_flag
+        use_pickup_flag(pickup_flag)
+        
+        entity.write_to_rom()
+        return
+      end
+      
+      if pickup_id >= 0x6F
+        # Item
+        if entity.is_hidden_pickup?
+          entity.type = 7
+          entity.subtype = 0xFF
+          entity.var_a = pickup_flag
+          use_pickup_flag(pickup_flag)
+          entity.var_b = pickup_id + 1
+        else
+          case rng.rand
+          when 0.00..0.70
+            # 70% chance for a red chest
+            entity.type = 2
+            entity.subtype = 0x16
+            entity.var_a = pickup_id + 1
+            entity.var_b = pickup_flag
+            use_pickup_flag(pickup_flag)
+          when 0.70..0.95
+            # 15% chance for an item on the ground
+            entity.type = 4
+            entity.subtype = 0xFF
+            entity.var_a = pickup_flag
+            use_pickup_flag(pickup_flag)
+            entity.var_b = pickup_id + 1
+          else
+            # 5% chance for a hidden blue chest
+            entity.type = 2
+            entity.subtype = 0x17
+            entity.var_a = pickup_id + 1
+            entity.var_b = pickup_flag
+            use_pickup_flag(pickup_flag)
+          end
+        end
+      else
+        # Glyph
+        
+        if entity.is_hidden_pickup?
+          entity.type = 7
+          entity.subtype = 2
+          entity.var_a = pickup_flag
+          use_pickup_flag(pickup_flag)
+          entity.var_b = pickup_id + 1
+        else
+          puzzle_glyph_ids = [0x1D, 0x1F, 0x20, 0x22, 0x24, 0x26, 0x27, 0x2A, 0x2B, 0x2F, 0x30, 0x31, 0x32, 0x46, 0x4E]
+          if puzzle_glyph_ids.include?(pickup_id)
+            # Free glyph
+            entity.type = 4
+            entity.subtype = 2
+            entity.var_a = pickup_flag
+            use_pickup_flag(pickup_flag)
+            entity.var_b = pickup_id + 1
+          else
+            # Glyph statue
+            entity.type = 2
+            entity.subtype = 2
+            entity.var_a = 0
+            entity.var_b = pickup_id + 1
+            
+            # We didn't use the pickup flag, so put it back
+            @unused_pickup_flags << pickup_flag
+          end
+        end
+      end
+      
+      if entity.is_glyph? && !entity.is_hidden_pickup?
+        entity.y_pos -= 0x20
+      end
+      
+      entity.write_to_rom()
+    end
+  end
+  
+  def rv_filter_locations_valid_for_pickup(checker, locations, pickup_name)
+    old_locs = locations
+    locations = locations.dup
+    
+    locations.delete_if {|loc| loc[:type].include?("Villager")}
+    
+    if OoEItems.glyphs.include?(pickup_name)
+      # Don't put progression glyph in certain locations where the player could easily get them early.
+      locations.delete_if {|loc| loc[:type].include?("No Glyphs")}
+      if options[:rv_split_pools]
+        locations.delete_if {|loc| loc[:type].include?("Item")}
+      end
+    else
+      # If the pickup is an item instead of a skill, don't let bosses drop it.
+      locations.delete_if {|loc| loc[:container] == "Spell"}
+      locations.delete_if {|loc| loc[:type].include?("Event")}
+      if options[:rv_split_pools]
+        locations.delete_if {|loc| loc[:type].include?("Glyph")}
+      end
+    end
+    
+    # Don't let progression items be in certain problematic locations. (This function is only called for progression items.)
+    locations.delete_if {|loc| loc[:type].include?("No Progression")}
+    
+    if OoEItems.relics.include?(pickup_name)
+      # Don't let relics be inside breakable walls in OoE.
+      # This is because they need to be inside a chest, and chests can't be hidden.
+      locations.delete_if {|loc| loc[:container] == "Wall"}
+    end
+    
+    locations
+  end
+  
+  def rv_place_progression_pickups(checker, &block)
+    previous_accessible_locations = []
+    locations_randomized_to_have_useful_pickups = []
+    rooms_that_already_have_an_event = []
+    progression_pickups_placed = 0
+    total_progression_pickups = checker.all_progression_pickups.length
+    on_leftovers = false
+    @rooms_by_progression_order_accessed = []
+    world_map_exits_randomized = []
+    world_map_entrances_used = []
+    
+    game.each_room do |room|
+      room.entities.each do |entity|
+        if entity.is_special_object? && (0x5F..0x88).include?(entity.subtype)
+          room_str = "%02X-%02X-%02X" % [room.area_index, room.sector_index, room.room_index]
+          rooms_that_already_have_an_event << room_str
+          break
+        end
+      end
+    end
+    
+    verbose = true
+    
+    spoiler_log.puts "Placing main route progression pickups:"
+    on_first_item = true
+    while true
+      possible_locations = checker.get_accessible_locations()
+      possible_locations = possible_locations.reject {|loc| locations_randomized_to_have_useful_pickups.include?(loc[:id])}
+      puts "Total possible locations: #{possible_locations.size}" if verbose
+
+      pickups_by_locations = checker.pickups_by_current_num_locations_they_access()
+      
+      pickups_by_usefulness = pickups_by_locations.select{|pickup, num_locations| num_locations > 0}
+      currently_useless_pickups = pickups_by_locations.select{|pickup, num_locations| num_locations == 0}
+      puts "Num useless pickups: #{currently_useless_pickups.size}" if verbose
+      placing_currently_useless_pickup = false
+      if pickups_by_usefulness.any?
+        max_usefulness = pickups_by_usefulness.values.max
+        
+        weights = pickups_by_usefulness.map do |pickup, usefulness|
+          # Weight less useful pickups as being more likely to be chosen.
+          weight = max_usefulness - usefulness + 1
+          weight = Math.sqrt(weight)
+          if checker.preferences[pickup]
+            weight *= checker.preferences[pickup]
+          end
+          weight
+        end
+        ps = weights.map{|w| w.to_f / weights.reduce(:+)}
+        useful_pickups = pickups_by_usefulness.keys
+        weighted_useful_pickups = useful_pickups.zip(ps).to_h
+        pickup_name = weighted_useful_pickups.max_by{|_, weight| rng.rand ** (1.0 / weight)}.first
+        
+      elsif pickups_by_locations.any? && checker.game_beatable?
+        # The player can access all locations.
+        # So we just randomly place one progression pickup.
+        
+        if !on_leftovers
+          spoiler_log.puts "Placing leftover progression pickups:"
+          on_leftovers = true
+        end
+        
+        pickup_name = pickups_by_locations.keys.sample(random: rng)
+      elsif pickups_by_locations.any?
+        # No locations can access new areas, but the game isn't beatable yet.
+        # This means any new areas will need at least two new items to access.
+        # So just place a random pickup for now.
+        
+        valid_pickups = pickups_by_locations.keys
+        
+        pickup_name = valid_pickups.sample(random: rng)
+        
+        placing_currently_useless_pickup = true
+        puts "Placing currently useless pickup." if verbose
+      else
+        # All progression pickups placed.
+        break
+      end
+      
+      puts "Trying to place #{pickup_name}" if verbose
+    
+      if !options[:randomize_villagers] && GAME == "ooe"
+        # If randomize villagers option is off, don't allow putting random things in these locations.
+        accessible_unused_villager_locations = possible_locations.select {|loc| loc[:type].include?("Villager")}
+        accessible_unused_villager_locations.each do |location|
+          possible_locations.delete(location)
+          locations_randomized_to_have_useful_pickups << location[:id]
+          
+          # Also, give the player this villager so the checker takes this into account.
+          #villager_name = get_villager_name_by_entity_location(location[:id])
+          #checker.add_item(villager_name)
+        end
+        
+        next if accessible_unused_villager_locations.length > 0
+      end
+    
+      new_possible_locations = possible_locations - previous_accessible_locations.flatten
+      
+      filtered_new_possible_locations = rv_filter_locations_valid_for_pickup(checker, new_possible_locations, pickup_name)
+      puts "Filtered new possible locations: #{filtered_new_possible_locations.size}" if verbose
+      puts "  " + filtered_new_possible_locations.join(", ") if verbose
+      
+      valid_previous_accessible_regions = previous_accessible_locations.map do |previous_accessible_region|
+        possible_locations = previous_accessible_region.dup
+        old_possible_locations = possible_locations
+        possible_locations = possible_locations.reject {|loc| locations_randomized_to_have_useful_pickups.include?(loc[:id])}
+        
+        possible_locations = rv_filter_locations_valid_for_pickup(checker, possible_locations, pickup_name)
+        
+        possible_locations = nil if possible_locations.empty?
+        
+        possible_locations
+      end.compact
+    
+      possible_locations_to_choose_from = filtered_new_possible_locations.dup
+      
+      if placing_currently_useless_pickup
+        # Place items that don't immediately open up new areas anywhere in the game, with no weighting towards later areas.
+        
+        valid_accessible_locations = previous_accessible_locations.map do |previous_accessible_region|
+          possible_locations = previous_accessible_region.dup
+          possible_locations = possible_locations.reject {|loc| locations_randomized_to_have_useful_pickups.include?(loc[:id])}
+
+          possible_locations = rv_filter_locations_valid_for_pickup(checker, possible_locations, pickup_name)
+          
+          possible_locations = nil if possible_locations.empty?
+          
+          possible_locations
+        end.compact.flatten
+        
+        valid_accessible_locations += filtered_new_possible_locations
+        
+        possible_locations_to_choose_from = valid_accessible_locations
+      elsif filtered_new_possible_locations.empty? && valid_previous_accessible_regions.any?
+        # No new locations, so select an old location.
+        
+        if on_leftovers
+          # Just placing a leftover progression pickup.
+          # Weighted to be more likely to select locations you got access to later rather than earlier.
+          
+          i = 1
+          weights = valid_previous_accessible_regions.map do |region|
+            # Weight later accessible regions as more likely than earlier accessible regions (exponential)
+            weight = i**2
+            i += 1
+            weight
+          end
+          ps = weights.map{|w| w.to_f / weights.reduce(:+)}
+          weighted_accessible_regions = valid_previous_accessible_regions.zip(ps).to_h
+          previous_accessible_region = weighted_accessible_regions.max_by{|_, weight| rng.rand ** (1.0 / weight)}.first
+          
+          possible_locations_to_choose_from = previous_accessible_region
+        else
+          # Placing a main route progression pickup, just not one that immediately opens up new areas.
+          # Always place in the most recent accessible region.
+          
+          possible_locations_to_choose_from = valid_previous_accessible_regions.last
+          puts "No new locations, using previous accessible location, total available: #{valid_previous_accessible_regions.last.size}" if verbose
+        end
+      elsif filtered_new_possible_locations.empty? && valid_previous_accessible_regions.empty?
+        # No new locations, but there's no old locations either.
+        possible_locations_to_choose_from = []
+      #Todo: clean up this next block
+      elsif filtered_new_possible_locations.size <= 5 && valid_previous_accessible_regions.last && valid_previous_accessible_regions.last.size >= 15
+        # There aren't many new locations unlocked by the last item we placed.
+        # But there are a lot of other locations unlocked by the one we placed before that.
+        # So we give it a chance to put it in one of those last spots, instead of the new spots.
+        # The chance is proportional to how few new locations there are. 1 = 70%, 2 = 60%, 3 = 50%, 4 = 40%, 5 = 30%.
+        chance = 0.30 + (5-filtered_new_possible_locations.size)*10
+        if rng.rand() <= chance
+          possible_locations_to_choose_from = valid_previous_accessible_regions.last
+          puts "Not many new locations, using previous accessible location, total available: #{valid_previous_accessible_regions.last.size}" if verbose
+        end
+      end
+      
+      previous_accessible_locations << new_possible_locations
+      
+      #if possible_locations_to_choose_from.empty?
+        #raise "Bug: Failed to find any spots to place pickup.\nSeed: #{@seed}\n\nItems:\n#{checker.current_items.keys.join(", ")}"
+      #end
+      
+      #puts "Possible locations: #{possible_locations_to_choose_from.join(", ")}" if verbose
+      
+      location = possible_locations_to_choose_from.sample(random: rng)
+      #spoiler_log.puts "Available: #{Locations.logic.hasItem("Volaticus")}"
+      locations_randomized_to_have_useful_pickups << location[:id]
+      
+      item = OoEItems.items[pickup_name]
+      if item[:type].include?("Villager")
+        # Villager
+        pickup_str = "villager #{pickup_name}"
+      else
+        pickup_str = "pickup %04X (#{pickup_name})" % item[:id]
+      end
+      
+      is_enemy_str = checker.enemy_locations.include?(location) ? " (boss)" : ""
+      is_event_str = checker.event_locations.include?(location) ? " (event)" : ""
+      is_hidden_str = checker.hidden_locations.include?(location) ? " (hidden)" : ""
+      spoiler_str = "  Placing #{pickup_str} at #{location[:name]}#{is_enemy_str}#{is_event_str}#{is_hidden_str} - #{location[:room]}"
+      spoiler_log.puts spoiler_str
+      puts spoiler_str if verbose
+      
+      rv_change_entity_location_to_pickup_id(location, item[:id])
+      
+      checker.add_item(pickup_name)
+      
+      on_first_item = false
+      progression_pickups_placed += 1
+      yield(progression_pickups_placed)
+    end
+    checker.progression_locations = locations_randomized_to_have_useful_pickups
+    spoiler_log.puts "All progression pickups placed successfully."
+  end  
+  
+  #Functions used by only base version
+  
+  def randomize_pickups_completably(checker, &block)
     spoiler_log.puts "Progression pickup locations:"
     
     case GAME
@@ -108,40 +657,13 @@ module PickupRandomizer
       
       checker.add_item(0x1E) # torpor. the player will get enough of these as it is
       
-      # Give the player the glyph sleeve in Ecclesia like in hard mode.
-      # To do this just get rid of the entity hider that hides it on normal mode.
-      entity_hider = game.areas[2].sectors[0].rooms[4].entities[6]
-      entity_hider.type = 0
-      entity_hider.write_to_rom()
-      # But we also need to give the chest a unique flag, because it shares the flag with the one from Minera in normal mode.
-      sleeve_chest = game.areas[2].sectors[0].rooms[4].entities[7]
-      pickup_flag = get_unused_pickup_flag()
-      sleeve_chest.var_b = pickup_flag
-      use_pickup_flag(pickup_flag)
-      sleeve_chest.write_to_rom()
-      # We also make sure the chest in Minera appears even on hard mode.
-      entity_hider = game.areas[8].sectors[2].rooms[7].entities[1]
-      entity_hider.type = 0
-      entity_hider.write_to_rom()
+      ooe_item_tweaks()
       checker.add_item(0x73) # glyph sleeve
-      
-      # Room in the Final Approach that has two overlapping chests both containing diamonds.
-      # We don't want these to overlap as the player could easily think it's just one item and not see the one beneath it.
-      # Move one a bit to the left and the other a bit to the right. Also give one a different pickup flag.
-      chest_a = game.areas[0].sectors[0xA].rooms[0xB].entities[1]
-      chest_b = game.areas[0].sectors[0xA].rooms[0xB].entities[2]
-      chest_a.x_pos = 0xE0
-      chest_b.x_pos = 0x130
-      pickup_flag = get_unused_pickup_flag()
-      chest_b.var_b = pickup_flag
-      use_pickup_flag(pickup_flag)
-      chest_a.write_to_rom()
-      chest_b.write_to_rom()
     end
     
     @locations_randomized_to_have_useful_pickups = []
     @rooms_by_progression_order_accessed = []
-    
+
     @rooms_that_already_have_an_event = []
     game.each_room do |room|
       room.entities.each do |entity|
@@ -152,7 +674,7 @@ module PickupRandomizer
         end
       end
     end
-    
+
     if @progression_fill_mode == :forward
       total_progression_pickups = checker.all_progression_pickups.length
       place_progression_pickups_forward_fill() do |progression_pickups_placed|
@@ -197,30 +719,30 @@ module PickupRandomizer
         portrait.type = 0
         portrait.write_to_rom()
       end
+      
     end
   rescue StandardError => e
     #output_map_rando_error_debug_info()
-    
+
     raise e
   end
   
   def place_progression_pickups_assumed_fill
     verbose = false
-    
+
     # This attribute is modified when adding a villager to a room.
     orig_rooms_that_already_have_an_event = @rooms_that_already_have_an_event.dup
-    
+
     # First place things that are not randomized in their normal locations.
     nonrandomized_item_locations = get_nonrandomized_item_locations()
-    
+
     orig_current_items = checker.current_items.dup
     if room_rando?
       orig_return_portraits = checker.return_portraits.dup
     end
-    
-    
+
     pickups_available = checker.all_progression_pickups - checker.current_items - nonrandomized_item_locations.values
-    
+
     # Because DoS has two bat transformation souls, which both allow a ton of progression, at least one of them tends to be placed very early.
     # So we change it so that only one of the two is available to be randomly placed to reduce the chance of early bat.
     # (The remaining second one will be placed non-randomly later.)
@@ -236,8 +758,8 @@ module PickupRandomizer
       bat_to_keep = nil
       bat_to_remove = nil
     end
-    
-    
+
+
     if room_rando?
       # Temporarily give all progress items and check what locations are available.
       # Those are all the valid locations on this seed, excluding rooms, subrooms, and portraits that are unused.
@@ -260,21 +782,20 @@ module PickupRandomizer
       end
     end
     locations_available -= nonrandomized_item_locations.keys
-    
-    
+
+
     locations_accessible_at_start = nil
     if room_rando?
       locations_accessible_at_start, _ = checker.get_accessible_locations_and_doors()
     end
-    
-    
+
     # Place pickups in completely random locations, and then check if the resulting seed is beatable.
     # Repeat this until a beatable seed is found.
     num_failures = 0
     while true
       @done_item_locations = nonrandomized_item_locations.dup
       @rooms_that_already_have_an_event = orig_rooms_that_already_have_an_event.dup
-      
+
       progression_spheres = decide_progression_pickups_for_assumed_fill(
         pickups_available,
         locations_available,
@@ -284,11 +805,11 @@ module PickupRandomizer
         puts "Total number of assumed fill failures: #{num_failures}"
         break
       end
-      
+
       if num_failures >= @assumed_fill_mode_max_redos
         raise "Failed to place progression pickups over #{@assumed_fill_mode_max_redos} times.\nPlease report this as a bug."
       end
-      
+
       num_failures += 1
       puts "Assumed fill failure ##{num_failures}" if num_failures % 100 == 0
       checker.restore_current_items(orig_current_items)
@@ -296,37 +817,37 @@ module PickupRandomizer
         checker.restore_return_portraits(orig_return_portraits)
       end
     end
-    
+
     # Restore this since any villagers we decided on during the previous step haven't actually been placed yet.
     @rooms_that_already_have_an_event = orig_rooms_that_already_have_an_event.dup
-    
+
     @progression_spheres = progression_spheres
     
     if bat_to_keep
       # If we had to remove one of the two bats from being randomly placed, we now go and place it non-randomly.
       # We simply place it in the last possible progression sphere we can find.
       # (Which specific location within that sphere is still chosen randomly.)
-      
+
       placed_bat_to_remove = false
       @progression_spheres.reverse_each do |sphere|
         locations_accessed_in_this_sphere = sphere[:locs]
         progress_locations_accessed_in_this_sphere = sphere[:progress_locs]
-        
+
         unused_locs = locations_accessed_in_this_sphere - progress_locations_accessed_in_this_sphere
         valid_unused_locs = filter_locations_valid_for_pickup(
           unused_locs,
           bat_to_remove
         )
-        
+
         if valid_unused_locs.any?
           location_for_bat_to_remove = valid_unused_locs.sample(random: rng)
           @done_item_locations[location_for_bat_to_remove] = bat_to_remove
-          
+
           progress_locations_accessed_in_this_sphere = locations_accessed_in_this_sphere.select do |location| 
             progress_locations_accessed_in_this_sphere.include?(location) || location == location_for_bat_to_remove
           end
           sphere[:progress_locs] = progress_locations_accessed_in_this_sphere
-          
+
           placed_bat_to_remove = true
           break
         end
@@ -343,20 +864,20 @@ module PickupRandomizer
     @progression_spheres.each do |sphere|
       progress_locations_accessed_in_this_sphere = sphere[:progress_locs]
       doors_accessed_in_this_sphere = sphere[:doors]
-      
+
       spoiler_str = "#{sphere_index+1}:"
       spoiler_log.puts spoiler_str
       puts spoiler_str if verbose
-      
+
       progress_locations_accessed_in_this_sphere.each do |location|
         pickup_global_id = @done_item_locations[location]
         next unless checker.all_progression_pickups.include?(pickup_global_id)
-        
+
         @locations_randomized_to_have_useful_pickups << location
         unless nonrandomized_item_locations.has_key?(location)
           change_entity_location_to_pickup_global_id(location, pickup_global_id)
         end
-        
+
         spoiler_str = get_item_placement_spoiler_string(location, pickup_global_id)
         if nonrandomized_item_locations.has_key?(location)
           spoiler_str += " (Not randomized)"
@@ -364,12 +885,12 @@ module PickupRandomizer
         spoiler_log.puts spoiler_str
         puts spoiler_str if verbose
       end
-      
+
       if room_rando?
         rooms_accessed_in_this_sphere = doors_accessed_in_this_sphere.map{|door_str| door_str[0,8]}
         # Remove duplicate rooms caused by accessing a new door in an old room.
         rooms_accessed_in_this_sphere -= already_seen_room_strs
-        
+
         @rooms_by_progression_order_accessed << rooms_accessed_in_this_sphere
         already_seen_room_strs += rooms_accessed_in_this_sphere
       end
@@ -377,32 +898,32 @@ module PickupRandomizer
       sphere_index += 1
     end
   end
-  
+
   def decide_progression_pickups_for_assumed_fill(pickups_available, locations_available, locations_accessible_at_start: nil)
     remaining_progress_items = pickups_available.dup
     remaining_locations = locations_available.dup
-    
+
     if GAME == "por" && options[:randomize_starting_room] && options[:randomize_portraits]
       starting_portrait_name = AREA_INDEX_TO_PORTRAIT_NAME[@starting_room.area_index]
       if starting_portrait_name
         starting_portrait_location_in_castle = pick_starting_portrait_location_in_castle()
-        
+
         @done_item_locations[starting_portrait_location_in_castle] = starting_portrait_name
-        
+
         return_portrait = get_primary_return_portrait_for_portrait(starting_portrait_name)
         checker.add_return_portrait(return_portrait.room.room_str, starting_portrait_location_in_castle)
-        
+
         remaining_progress_items.delete(starting_portrait_name)
       end
     end
-    
+
     if room_rando?
       # Place the very first item somewhere that is definitely reachable within the first sphere.
       # This is for the sake of performance - tons of attempts where there isn't a single item accessible at the start is just a waste of time.
       if locations_accessible_at_start.nil?
         locations_accessible_at_start, _ = checker.get_accessible_locations_and_doors()
       end
-      
+
       possible_first_items = remaining_progress_items.dup
       if GAME == "por" && (!room_rando? || !options[:rebalance_enemies_in_room_rando])
         # Don't allow putting late game portraits at the very start.
@@ -418,24 +939,24 @@ module PickupRandomizer
         if possible_locations.empty?
           next
         end
-        
+
         remaining_progress_items.delete(possible_first_item)
-        
+
         location = possible_locations.sample(random: rng)
         remaining_locations.delete(location)
-        
+
         @done_item_locations[location] = possible_first_item
-        
+
         if RANDOMIZABLE_VILLAGER_NAMES.include?(possible_first_item)
           # Villager
           room_str = location[0,8]
           @rooms_that_already_have_an_event << room_str
         end
-        
+
         break
       end
     end
-    
+
     remaining_progress_items.each do |pickup_global_id|
       possible_locations = filter_locations_valid_for_pickup(remaining_locations, pickup_global_id)
       if possible_locations.empty?
@@ -443,16 +964,16 @@ module PickupRandomizer
       end
       location = possible_locations.sample(random: rng)
       remaining_locations.delete(location)
-      
+
       @done_item_locations[location] = pickup_global_id
-      
+
       if RANDOMIZABLE_VILLAGER_NAMES.include?(pickup_global_id)
         # Villager
         room_str = location[0,8]
         @rooms_that_already_have_an_event << room_str
       end
     end
-    
+
     inaccessible_progress_locations = @done_item_locations.keys
     accessible_progress_locations = []
     accessible_doors = []
@@ -466,7 +987,7 @@ module PickupRandomizer
         locations_accessed_in_this_sphere = checker.get_accessible_locations()
       end
       progress_locations_accessed_in_this_sphere = locations_accessed_in_this_sphere & inaccessible_progress_locations
-      
+
       if progress_locations_accessed_in_this_sphere.empty?
         #if room_rando?
         #  puts "Starting room: #{@starting_room}"
@@ -493,24 +1014,24 @@ module PickupRandomizer
         #  accessible_area_indexes = (accessible_progress_locations+locations_accessed_in_this_sphere).map{|x| x[0,2].to_i(16)}.uniq
         #  puts "All accessible areas: #{accessible_area_indexes}"
         #end
-        
+
         return :failure
       end
-      
+
       pickups_obtained_in_this_sphere = []
       progress_locations_accessed_in_this_sphere.each do |location|
         pickup_global_id = @done_item_locations[location]
         pickups_obtained_in_this_sphere << pickup_global_id
         checker.add_item(pickup_global_id)
       end
-      
+
       if GAME == "por" && progression_spheres.size == 0 && (!room_rando? || !options[:rebalance_enemies_in_room_rando])
         # If portraits are randomized but we can't rebalance enemies, try to avoid placing late game portraits in the early game.
         if (pickups_obtained_in_this_sphere & LATE_GAME_PORTRAITS).any?
           return :failure
         end
       end
-      
+
       accessible_progress_locations += progress_locations_accessed_in_this_sphere
       inaccessible_progress_locations -= progress_locations_accessed_in_this_sphere
       progression_spheres << {
@@ -518,55 +1039,55 @@ module PickupRandomizer
         progress_locs: progress_locations_accessed_in_this_sphere,
         doors: doors_accessed_in_this_sphere,
       }
-      
+
       if inaccessible_progress_locations.empty?
         break
       end
     end
-    
+
     return progression_spheres
   end
-  
+
   def get_nonrandomized_item_locations
     nonrandomized_done_item_locations = {}
-    
+
     if !options[:randomize_boss_souls] && ["dos", "ooe"].include?(GAME)
       # Vanilla boss souls.
       checker.enemy_locations.each do |location|
         pickup_global_id = get_entity_skill_drop_by_entity_location(location)
         nonrandomized_done_item_locations[location] = pickup_global_id
-        
+
         @locations_randomized_to_have_useful_pickups << location
       end
     end
-    
+
     if !options[:randomize_villagers] && GAME == "ooe"
       # Vanilla villagers.
       checker.villager_locations.each do |location|
         pickup_global_id = get_villager_name_by_entity_location(location)
         nonrandomized_done_item_locations[location] = pickup_global_id
-        
+
         @locations_randomized_to_have_useful_pickups << location
       end
     end
-    
+
     if !options[:randomize_portraits] && GAME == "por"
       # Vanilla portraits.
       checker.portrait_locations.each do |location|
         # Don't count removed portraits in short mode as portrait locations.
         next if @portrait_locations_to_remove.include?(location)
-        
+
         pickup_global_id = get_portrait_name_by_entity_location(location)
         nonrandomized_done_item_locations[location] = pickup_global_id
-        
+
         @locations_randomized_to_have_useful_pickups << location
       end
     end
-    
+
     return nonrandomized_done_item_locations
   end
-  
-  def place_progression_pickups_forward_fill(&block)
+
+  def place_progression_pickups_forward_fill(checker, &block)
     previous_accessible_locations = []
     progression_pickups_placed = 0
     total_progression_pickups = checker.all_progression_pickups.length
@@ -743,8 +1264,6 @@ module PickupRandomizer
         next if accessible_unused_portrait_locations.length > 0
       end
       
-      
-      
       new_possible_locations = possible_locations - previous_accessible_locations.flatten
       
       filtered_new_possible_locations = filter_locations_valid_for_pickup(new_possible_locations, pickup_global_id)
@@ -874,21 +1393,21 @@ module PickupRandomizer
     
     spoiler_log.puts "All progression pickups placed successfully."
   end
-  
+
   def pick_starting_portrait_location_in_castle
     if GAME != "por" || !options[:randomize_starting_room] || !options[:randomize_portraits]
       raise "Cannot choose random location for starting portrait with these settings"
     end
-    
+
     starting_portrait_name = AREA_INDEX_TO_PORTRAIT_NAME[@starting_room.area_index]
     if starting_portrait_name.nil?
       raise "Starting area is not in a portrait"
     end
-    
+
     # The starting room randomizer started the player in a portrait.
     # This is problematic because the portrait randomizer will traditionally never place a portrait back to Dracula's castle, making it inaccessible.
     # So we need to place the starting portrait at a random location in Dracula's Castle and register it with the logic.
-    
+
     # First pick a random valid location.
     possible_portrait_locations = checker.all_locations.keys
     possible_portrait_locations = filter_locations_valid_for_pickup(possible_portrait_locations, starting_portrait_name)
@@ -902,24 +1421,24 @@ module PickupRandomizer
       area_index == 0
     end
     starting_portrait_location_in_castle = possible_portrait_locations.sample(random: rng)
-    
+
     return starting_portrait_location_in_castle
   end
-  
+
   def get_primary_return_portrait_for_portrait(portrait_name)
     portrait_data = PORTRAIT_NAME_TO_DATA[portrait_name]
     dest_area_index = portrait_data[:area_index]
     dest_sector_index = portrait_data[:sector_index]
     dest_room_index = portrait_data[:room_index]
     dest_room = game.areas[dest_area_index].sectors[dest_sector_index].rooms[dest_room_index]
-    
+
     return_portrait = dest_room.entities.find do |entity|
       entity.is_special_object? && [0x1A, 0x76, 0x86, 0x87].include?(entity.subtype)
     end
-    
+
     return return_portrait
   end
-  
+
   def get_item_placement_spoiler_string(location, pickup_global_id)
     if RANDOMIZABLE_VILLAGER_NAMES.include?(pickup_global_id)
       # Villager
@@ -939,7 +1458,7 @@ module PickupRandomizer
         word.capitalize
       end
     end.join(" ")
-    
+
     location =~ /^(\h\h)-(\h\h)-(\h\h)_(\h+)$/
     area_index, sector_index, room_index, entity_index = $1.to_i(16), $2.to_i(16), $3.to_i(16), $4.to_i(16)
     if SECTOR_INDEX_TO_SECTOR_NAME[area_index]
@@ -960,15 +1479,15 @@ module PickupRandomizer
     is_hidden_str = checker.hidden_locations.include?(location) ? " (Hidden)" : ""
     is_mirror_str = checker.mirror_locations.include?(location) ? " (Mirror)" : ""
     location_str = "#{area_name} (#{location})#{is_enemy_str}#{is_event_str}#{is_easter_egg_str}#{is_hidden_str}#{is_mirror_str}"
-    
+
     spoiler_str = "  %-18s %s" % [pickup_str+":", location_str]
-    
+
     return spoiler_str
   end
-  
+
   def output_map_rando_error_debug_info
     return unless options[:randomize_maps]
-    
+
     # When debugging logic errors in map rando, output a list of what room strings were accessible at the end.
     File.open("./logs/accessed rooms debug #{GAME} #{seed}.txt", "w") do |f|
       for room_str in @rooms_by_progression_order_accessed.flatten.uniq
@@ -1001,7 +1520,7 @@ module PickupRandomizer
     end
   end
   
-  def place_non_progression_pickups
+  def place_non_progression_pickups(checker)
     remaining_locations = checker.get_accessible_locations() - @locations_randomized_to_have_useful_pickups
     remaining_locations.shuffle!(random: rng)
     
@@ -1117,23 +1636,23 @@ module PickupRandomizer
   
   def filter_locations_valid_for_pickup(locations, pickup_global_id)
     locations = locations.dup
-    
+
     if ITEM_GLOBAL_ID_RANGE.include?(pickup_global_id)
       # If the pickup is an item instead of a skill, don't let bosses drop it.
       locations -= checker.enemy_locations
     end
-    
+
     # Don't let progression items be in certain problematic locations. (This function is only called for progression items.)
     locations -= checker.no_progression_locations
-    
+
     if GAME == "dos" && SKILL_GLOBAL_ID_RANGE.include?(pickup_global_id)
       # Don't let events give you souls in DoS.
       locations -= checker.event_locations
       locations -= checker.easter_egg_locations
-      
+
       # Don't let soul candles be inside mirrors. They don't get hidden, and are accessible without Paranoia.
       locations -= checker.mirror_locations
-      
+
       # Don't let soul candles be inside specific locations that can be broken without reaching them.
       locations -= checker.no_soul_locations
     end
@@ -1163,17 +1682,17 @@ module PickupRandomizer
       locations -= checker.hidden_locations
       locations -= checker.event_locations
       locations -= checker.enemy_locations
-      
+
       # Villagers can't appear in Dracula's Castle since the castle can't be unlocked until you have all villagers.
       locations.reject! do |location|
         area_index = location[0,2].to_i(16)
         area_index == 0
       end
-      
+
       # Locations too close to the top of the room shouldn't be villagers, as the Torpor glyph would spawn above the screen and not be absorbable.
       locations_too_high_to_be_a_villager = ["00-05-07_01", "00-05-07_02", "00-05-08_02", "00-05-08_03", "00-05-0C_01", "00-06-09_00", "0D-00-04_00", "0D-00-0C_00"]
       locations -= locations_too_high_to_be_a_villager
-      
+
       # Two villagers shouldn't be placed in the same room, or their events will conflict and not work correctly.
       locations.reject! do |location|
         room_str = location[0,8]
@@ -1183,18 +1702,18 @@ module PickupRandomizer
     if PORTRAIT_NAMES.include?(pickup_global_id)
       bad_portrait_locations = [
         "05-02-0C_01", # Legion's room. If a portrait gets placed here the player won't be able to activate Legion because using a portrait doesn't set the pickup flag Legion checks.
-        
+
         "05-01-13_00", # This location overlaps a ring of flaming skulls that would damage the player on return.
         "06-01-0D_02", # This location overlaps a ring of flaming skulls that would damage the player on return.
-        
+
         "03-00-12_00", # Enemies overlap this location.
         "04-00-12_00", # Enemies overlap this location.
       ]
-      
+
       locations.select! do |location|
         !bad_portrait_locations.include?(location)
       end
-      
+
       if !room_rando? && pickup_global_id != :portrait_nest_of_evil
         # This is the location where Nest of Evil was in vanilla.
         # If room rando is off, you need to do the quest with the map percentages to unlock this location.
@@ -1206,90 +1725,8 @@ module PickupRandomizer
       # Don't put progression glyph in certain locations where the player could easily get them early.
       locations -= checker.no_glyph_locations
     end
-    
+
     locations
-  end
-  
-  def get_unplaced_non_progression_pickup(valid_ids: PICKUP_GLOBAL_ID_RANGE.to_a)
-    valid_possible_items = @unplaced_non_progression_pickups.select do |pickup_global_id|
-      valid_ids.include?(pickup_global_id)
-    end
-    
-    pickup_global_id = valid_possible_items.sample(random: rng)
-    
-    if pickup_global_id.nil?
-      # Ran out of unplaced pickups, so place a duplicate instead.
-      @unplaced_non_progression_pickups += all_non_progression_pickups().select do |pickup_global_id|
-        valid_ids.include?(pickup_global_id)
-      end
-      @unplaced_non_progression_pickups -= checker.current_items
-      
-      # If a glyph has already been placed as an event glyph, do not place it again somewhere.
-      # If the player gets one from a glyph statue first, then the one in the event/puzzle won't appear.
-      @unplaced_non_progression_pickups -= @glyphs_placed_as_event_glyphs
-      
-      return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-    end
-    
-    @unplaced_non_progression_pickups.delete(pickup_global_id)
-    @used_non_progression_pickups << pickup_global_id
-    
-    return pickup_global_id
-  end
-  
-  def get_unplaced_non_progression_item
-    return get_unplaced_non_progression_pickup(valid_ids: ITEM_GLOBAL_ID_RANGE.to_a)
-  end
-  
-  def get_unplaced_non_progression_item_that_can_be_an_arm_shifted_immediate
-    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a
-    valid_ids.select!{|item_id| game.fs.check_integer_can_be_an_arm_shifted_immediate?(item_id+1)}
-    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-  end
-  
-  def get_unplaced_non_progression_skill
-    return get_unplaced_non_progression_pickup(valid_ids: SKILL_GLOBAL_ID_RANGE.to_a)
-  end
-  
-  def get_unplaced_non_progression_item_except_ooe_relics
-    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a
-    if GAME == "ooe"
-      valid_ids -= (0x6F..0x74).to_a
-    end
-    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-  end
-  
-  def get_unplaced_non_progression_projectile_glyph
-    projectile_glyph_ids = (0x16..0x18).to_a + (0x1C..0x32).to_a + (0x34..0x36).to_a
-    return get_unplaced_non_progression_pickup(valid_ids: projectile_glyph_ids)
-  end
-  
-  def get_unplaced_non_progression_pickup_for_enemy_drop
-    valid_ids = PICKUP_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
-    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-  end
-  
-  def get_unplaced_non_progression_item_for_enemy_drop
-    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
-    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-  end
-  
-  def get_unplaced_non_progression_item_except_ooe_relics_for_enemy_drop
-    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
-    if GAME == "ooe"
-      valid_ids -= (0x6F..0x74).to_a
-    end
-    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
-  end
-  
-  def get_entity_by_location_str(location)
-    location =~ /^(\h\h)-(\h\h)-(\h\h)_(\h+)$/
-    area_index, sector_index, room_index, entity_index = $1.to_i(16), $2.to_i(16), $3.to_i(16), $4.to_i(16)
-    
-    room = game.areas[area_index].sectors[sector_index].rooms[room_index]
-    entity = room.entities[entity_index]
-    
-    return entity
   end
   
   def change_entity_location_to_pickup_global_id(location, pickup_global_id)
@@ -1681,6 +2118,122 @@ module PickupRandomizer
     end
   end
   
+  #Functions used by both base version and RV
+  
+  #Makes some minor adjustments to OoE item locations. Moved out of randomization functions for convenience.
+  def ooe_item_tweaks
+    # Give the player the glyph sleeve in Ecclesia like in hard mode.
+    # To do this just get rid of the entity hider that hides it on normal mode.
+    entity_hider = game.areas[2].sectors[0].rooms[4].entities[6]
+    entity_hider.type = 0
+    entity_hider.write_to_rom()
+    # But we also need to give the chest a unique flag, because it shares the flag with the one from Minera in normal mode.
+    sleeve_chest = game.areas[2].sectors[0].rooms[4].entities[7]
+    pickup_flag = get_unused_pickup_flag()
+    sleeve_chest.var_b = pickup_flag
+    use_pickup_flag(pickup_flag)
+    sleeve_chest.write_to_rom()
+    # We also make sure the chest in Minera appears even on hard mode.
+    entity_hider = game.areas[8].sectors[2].rooms[7].entities[1]
+    entity_hider.type = 0
+    entity_hider.write_to_rom()
+      
+    # Room in the Final Approach that has two overlapping chests both containing diamonds.
+    # We don't want these to overlap as the player could easily think it's just one item and not see the one beneath it.
+    # Move one a bit to the left and the other a bit to the right. Also give one a different pickup flag.
+    chest_a = game.areas[0].sectors[0xA].rooms[0xB].entities[1]
+    chest_b = game.areas[0].sectors[0xA].rooms[0xB].entities[2]
+    chest_a.x_pos = 0xE0
+    chest_b.x_pos = 0x130
+    pickup_flag = get_unused_pickup_flag()
+    chest_b.var_b = pickup_flag
+    use_pickup_flag(pickup_flag)
+    chest_a.write_to_rom()
+    chest_b.write_to_rom()
+  end
+  
+  def get_unplaced_non_progression_pickup(valid_ids: PICKUP_GLOBAL_ID_RANGE.to_a)
+    valid_possible_items = @unplaced_non_progression_pickups.select do |pickup_global_id|
+      valid_ids.include?(pickup_global_id)
+    end
+    
+    pickup_global_id = valid_possible_items.sample(random: rng)
+    
+    if pickup_global_id.nil?
+      # Ran out of unplaced pickups, so place a duplicate instead.
+      @unplaced_non_progression_pickups += all_non_progression_pickups().select do |pickup_global_id|
+        valid_ids.include?(pickup_global_id)
+      end
+      @unplaced_non_progression_pickups -= checker.current_items
+      
+      # If a glyph has already been placed as an event glyph, do not place it again somewhere.
+      # If the player gets one from a glyph statue first, then the one in the event/puzzle won't appear.
+      @unplaced_non_progression_pickups -= @glyphs_placed_as_event_glyphs
+      
+      return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+    end
+    
+    @unplaced_non_progression_pickups.delete(pickup_global_id)
+    @used_non_progression_pickups << pickup_global_id
+    
+    return pickup_global_id
+  end
+  
+  def get_unplaced_non_progression_item
+    return get_unplaced_non_progression_pickup(valid_ids: ITEM_GLOBAL_ID_RANGE.to_a)
+  end
+  
+  def get_unplaced_non_progression_item_that_can_be_an_arm_shifted_immediate
+    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a
+    valid_ids.select!{|item_id| game.fs.check_integer_can_be_an_arm_shifted_immediate?(item_id+1)}
+    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+  end
+  
+  def get_unplaced_non_progression_skill
+    return get_unplaced_non_progression_pickup(valid_ids: SKILL_GLOBAL_ID_RANGE.to_a)
+  end
+  
+  def get_unplaced_non_progression_item_except_ooe_relics
+    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a
+    if GAME == "ooe"
+      valid_ids -= (0x6F..0x74).to_a
+    end
+    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+  end
+  
+  def get_unplaced_non_progression_projectile_glyph
+    projectile_glyph_ids = (0x16..0x18).to_a + (0x1C..0x32).to_a + (0x34..0x36).to_a
+    return get_unplaced_non_progression_pickup(valid_ids: projectile_glyph_ids)
+  end
+  
+  def get_unplaced_non_progression_pickup_for_enemy_drop
+    valid_ids = PICKUP_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
+    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+  end
+  
+  def get_unplaced_non_progression_item_for_enemy_drop
+    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
+    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+  end
+  
+  def get_unplaced_non_progression_item_except_ooe_relics_for_enemy_drop
+    valid_ids = ITEM_GLOBAL_ID_RANGE.to_a - ITEMS_WITH_OP_HARDCODED_EFFECT
+    if GAME == "ooe"
+      valid_ids -= (0x6F..0x74).to_a
+    end
+    return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
+  end
+  
+  def get_entity_by_location_str(location)
+    location =~ /^(\h\h)-(\h\h)-(\h\h)_(\h+)$/
+    area_index, sector_index, room_index, entity_index = $1.to_i(16), $2.to_i(16), $3.to_i(16), $4.to_i(16)
+    
+    room = game.areas[area_index].sectors[sector_index].rooms[room_index]
+    entity = room.entities[entity_index]
+    
+    return entity
+  end
+  
   def remove_inaccessible_items(inaccessible_remaining_locations)
     inaccessible_remaining_locations.each do |location|
       entity = get_entity_by_location_str(location)
@@ -1898,6 +2451,7 @@ module PickupRandomizer
     elsif event_entity.subtype == 0x6F # Dominus Anger
       game.fs.write(0x02230A84, [pickup_global_id+1].pack("C"))
       game.fs.write(0x022C25DC, [pickup_global_id+1].pack("C"))
+      softlock_prone_items << pickup_global_id+1
     elsif event_entity.subtype == 0x81 # Cerberus
       # Get rid of the event, turn it into a normal free glyph
       # We can't keep the event because it has special programming to always spawn them in order even if you get to the locations out of order.
@@ -1917,6 +2471,9 @@ module PickupRandomizer
         event.type = 0
         event.write_to_rom()
       end
+    elsif event_entity.subtype == 0x76 # Dominus Agony
+      game.fs.write(0x022C25BC, [pickup_global_id+1].pack("C"))
+      softlock_prone_items << pickup_global_id+1 # to avoid Albus having the same glyph on his cast glyph and dropped glyph
     else
       glyph_id_location, pickup_flag_read_location, pickup_flag_write_location, second_pickup_flag_read_location = case event_entity.subtype
       when 0x2F # Luminatio
@@ -1937,8 +2494,6 @@ module PickupRandomizer
         [0x022C31DC]
       when 0x53 # Morbus
         [0x022C2354, 0x022C2318, 0x022C2344]
-      when 0x76 # Dominus Agony
-        [0x022C25BC]
       else
         return
       end
