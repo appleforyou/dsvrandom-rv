@@ -270,6 +270,10 @@ class Randomizer
     
     @unused_rooms = [] # This will be a list of rooms unused by the map rando/PoR short mode.
     
+    if GAME != "ooe" && options[:enable_rv]
+      raise "Error: RV logic is not compatible with games other than Order of Ecclesia."
+    end
+    
     if GAME == "por"
       @boss_id_for_each_portrait = {
         :portrait_city_of_haze => 0x8A,
