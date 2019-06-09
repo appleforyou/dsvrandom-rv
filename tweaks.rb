@@ -23,17 +23,16 @@ module Tweaks
     end
     
     if GAME == "ooe"
-      if options[:open_world_map]
+      if options[:enable_rv]
+        game.apply_armips_patch("dsvrandom/rv/ooe_nonlinear_rv.asm", full_path: true)
+      elsif options[:open_world_map]
         game.apply_armips_patch("ooe_nonlinear")
       else
         # Even if the user doesn't want the world map opened up we still make the events capable of being accessed nonlinearly.
         game.apply_armips_patch("ooe_nonlinear_events")
+        # Make both Ecclesia and Wygol unlocked at the start instead of just Ecclesia.
+        game.apply_armips_patch("ooe_wygol_unlocked_at_start")
       end
-    end
-    
-    if GAME == "ooe" && !options[:open_world_map]
-      # Make both Ecclesia and Wygol unlocked at the start instead of just Ecclesia.
-      game.apply_armips_patch("ooe_wygol_unlocked_at_start")
     end
     
     if GAME == "ooe"
