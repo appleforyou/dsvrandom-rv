@@ -29,6 +29,8 @@ require_relative 'randomizers/cosmetic/dialogue_randomizer'
 require_relative 'randomizers/cosmetic/skill_sprites_randomizer'
 require_relative 'randomizers/cosmetic/enemy_sprite_randomizer'
 
+require_relative 'rv/ooe_items'
+
 class Randomizer
   include Tweaks
   
@@ -45,7 +47,6 @@ class Randomizer
   include WeaponSynthRandomizer
   include StartingRoomRandomizer
   include StartingItemsRandomizer
-  include SkillSpriteRandomizer
   include EnemyAnimSpeedRandomizer
   include RedWallRandomizer
   include MapRandomizer
@@ -53,6 +54,7 @@ class Randomizer
   
   include BgmRandomizer
   include DialogueRandomizer
+  include SkillSpriteRandomizer
   include EnemySpriteRandomizer
   
   attr_reader :options,
@@ -64,13 +66,18 @@ class Randomizer
               :checker,
               :renderer,
               :tiled,
-              :all_non_progression_pickups
+              :all_non_progression_pickups,
+              :softlock_prone_items,
+              :ooe_checker
   
-  def initialize(seed, game, options, difficulty_level, difficulty_settings_averages)
+  def initialize(seed, game, options, difficulty_level, difficulty_settings_averages, rv_difficulty)
     @seed = seed
     @game = game
     @options = options
     @renderer = Renderer.new(game.fs)
+    
+    #keeping track of which items not to dupe
+    @softlock_prone_items = []
     
     if seed.nil? || seed.empty?
       raise "No seed given"
@@ -96,6 +103,9 @@ class Randomizer
     
     if room_rando?
       @checker = DoorCompletabilityChecker.new(game, options)
+    elsif options[:enable_rv]
+      @checker = OoEChecker.new(options)
+      options[:rv_difficulty] = rv_difficulty
     else
       @checker = CompletabilityChecker.new(game, options)
     end
@@ -224,7 +234,7 @@ class Randomizer
   def get_room_collision(room)
     return RoomCollision.new(room, self)
   end
-  
+
   def get_collision_tileset(collision_tileset_pointer, sector)
     @cached_collision_tilesets[sector.overlay_id] ||= {}
     @cached_collision_tilesets[sector.overlay_id][collision_tileset_pointer] ||= begin
@@ -251,6 +261,9 @@ class Randomizer
       log.puts "Seed: #{@seed}, Game: #{LONG_GAME_NAME}, Randomizer version: #{DSVRANDOM_VERSION}"
       log.puts "Selected options: #{options_string}"
       log.puts "Difficulty level: #{difficulty_settings_string}"
+      if options[:enable_rv]
+        log.puts "RV difficulty: #{options[:rv_difficulty]}"
+      end
     end
     
     apply_pre_randomization_tweaks()
@@ -268,17 +281,17 @@ class Randomizer
         :portrait_burnt_paradise => 0x96,
         :portrait_forgotten_city => 0x97,
       }
-      
+
       @portraits_needed_to_open_studio_portrait = [
         :portrait_13th_street,
         :portrait_dark_academy,
         :portrait_burnt_paradise,
         :portrait_forgotten_city,
       ]
-      
+
       @boss_id_inside_studio_portrait = 0x93
     end
-    
+
     if GAME == "por"
       if options[:por_short_mode]
         reset_rng()
@@ -299,7 +312,7 @@ class Randomizer
           @portraits_to_remove << portrait_to_remove
           late_game_portraits.delete(portrait_to_remove)
         end
-        
+
         @portraits_needed_to_open_studio_portrait = PickupRandomizer::PORTRAIT_NAMES -
           [:portrait_nest_of_evil] - @portraits_to_remove
         
@@ -361,7 +374,9 @@ class Randomizer
     end
     
     # Now it's safe to initialize the list of progress items.
-    checker.initialize_all_progression_pickups()
+    if !options[:enable_rv]
+      checker.initialize_all_progression_pickups()
+    end
     
     @max_up_items = []
     if options[:randomize_consumable_behavior]
@@ -376,13 +391,12 @@ class Randomizer
         possible_max_up_ids -= [0x4C, 0x4D] # Don't let castle maps 2 and 3 be max ups either since then they won't reveal the map
         possible_max_up_ids -= [0x45, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F] # Don't let magical tickets and records be max ups since other types of items can't be made magical tickets or max ups.
         possible_max_up_ids -= [0x2A, 0x2B, 0x2C, 0x29, 0x2D, 0x2E] # Don't let the cake items given by the City of Haze cash register be max ups, since the player could get them over and over again as they only disappear when the player has one in their inventory.
-        
+
         # Don't allow quest rewards to be max ups since the player could use it infinitely.
         game.quests.each do |quest|
           next if quest.reward_item.nil?
           possible_max_up_ids.delete(quest.reward_item["Item ID"])
         end
-        
         2.times do
           max_up_id = possible_max_up_ids.sample(random: rng)
           possible_max_up_ids.delete(max_up_id)
@@ -400,13 +414,13 @@ class Randomizer
         possible_max_up_ids -= (0xAE..0xB2).to_a # Camera and photos
         possible_max_up_ids -= (0xB6..0xB9).to_a # Sketchbook and sketches
         possible_max_up_ids -= (0xAC..0xAD).to_a # Mouse and cat collar
-        
+
         # Don't allow quest rewards to be max ups since the player could use it infinitely.
         game.quests.each do |quest|
           next if quest.reward_item.nil?
           possible_max_up_ids.delete(quest.reward_item["Item ID"])
         end
-        
+
         3.times do
           max_up_id = possible_max_up_ids.sample(random: rng)
           possible_max_up_ids.delete(max_up_id)
@@ -423,22 +437,30 @@ class Randomizer
     end
     
     if GAME == "ooe" && options[:randomize_pickups]
-      # Glyph given by Barlowe.
-      # We randomize this, but only to a starter physical weapon glyph, not to any glyph.
-      reset_rng()
-      possible_starter_weapons = [0x01, 0x04, 0x07, 0x0A, 0x0D, 0x10, 0x13, 0x16]
-      pickup_global_id = possible_starter_weapons.sample(random: rng)
-      game.fs.load_overlay(42)
-      game.fs.write(0x022C3980, [0xE3A01000].pack("V"))
-      game.fs.write(0x022C3980, [pickup_global_id+1].pack("C"))
-      checker.add_item(pickup_global_id)
-      @ooe_starter_glyph_id = pickup_global_id # Tell other randomization options what this glyph is so they can handle it properly
+      if options[:enable_rv]
+        rv_randomize_starting_glyph(checker)
+      else
+        # Glyph given by Barlowe.
+        # We randomize this, but only to a starter physical weapon glyph, not to any glyph.
+        reset_rng()
+        possible_starter_weapons = [0x01, 0x04, 0x07, 0x0A, 0x0D, 0x10, 0x13, 0x16]
+        pickup_global_id = possible_starter_weapons.sample(random: rng)
+        game.fs.load_overlay(42)
+        game.fs.write(0x022C3980, [0xE3A01000].pack("V"))
+        game.fs.write(0x022C3980, [pickup_global_id+1].pack("C"))
+        checker.add_item(pickup_global_id)
+        @ooe_starter_glyph_id = pickup_global_id # Tell other randomization options what this glyph is so they can handle it properly
+      end
     end
     
     options_completed += 2 # Initialization
     
     # Now it's safe to initialize the list of non-progress items.
-    initialize_all_non_progression_pickups()
+    if options[:enable_rv]
+      rv_initialize_all_non_progression_pickups(checker)
+    else
+      initialize_all_non_progression_pickups()
+    end
     
     # Choose a healing item to be guaranteed cheap and decent in the shop.
     if options[:randomize_consumable_behavior]
@@ -471,13 +493,13 @@ class Randomizer
       enemy_dna = EnemyDNA.new(enemy_id, game)
       @original_enemy_dnas << enemy_dna
     end
-    
+
     # Preserve original item prices.
     @original_item_prices = {}
     game.items.each_with_index do |item, item_id|
       @original_item_prices[item_id] = item["Price"]
     end
-    
+
     if options[:randomize_bosses]
       yield [options_completed, "Shuffling bosses..."]
       reset_rng()
@@ -640,14 +662,14 @@ class Randomizer
       enemy.type = 0
       enemy.write_to_rom()
     end
-    
+
     # Handle putting certain items in the starting room.
     case GAME
     when "dos"
       # Always start the player with Doppelganger.
       add_bonus_item_to_starting_room(0x144) # Doppelganger
       checker.add_item(0x144)
-      
+    
       if room_rando?
         # If the player can't access the drawbridge room give them Magic Seal 1.
         # (Commented out because room rando unlocks all boss doors.)
@@ -661,18 +683,18 @@ class Randomizer
       # Always start the player with Lizard Tail.
       add_bonus_item_to_starting_room(0x1B2) # Lizard Tail
       checker.add_item(0x1B2) # Lizard Tail
-      
+
       add_bonus_item_to_starting_room(0x1AD) # Call Cube
       checker.add_item(0x1AD) # Call Cube
-      
+
       add_bonus_item_to_starting_room(0x1AE) # Skill Cube
       checker.add_item(0x1AE) # Skill Cube
-      
+
       if options[:dont_randomize_change_cube]
         add_bonus_item_to_starting_room(0x1AC) # Change Cube
         checker.add_item(0x1AC) # Change Cube
       end
-      
+
       add_bonus_item_to_starting_room(0x1B8) # Critical Art
       checker.add_item(0x1B8)
     when "ooe"
@@ -695,16 +717,28 @@ class Randomizer
     if options[:randomize_pickups]
       yield [options_completed, "Placing progression pickups..."]
       reset_rng()
-      randomize_pickups_completably() do |percent|
-        yield [options_completed+percent*20, "Placing progression pickups..."]
+      if options[:enable_rv]
+        rv_randomize_pickups_completably(checker) do |percent|
+          yield [options_completed+percent*20, "Placing progression pickups..."]
+        end
+      else
+        randomize_pickups_completably(checker) do |percent|
+          yield [options_completed+percent*20, "Placing progression pickups..."]
+        end
       end
       options_completed += 20
     end
     
     @unplaced_non_progression_pickups = all_non_progression_pickups.dup
-    @unplaced_non_progression_pickups -= checker.current_items
     @used_non_progression_pickups = []
-    @used_non_progression_pickups += (checker.current_items & all_non_progression_pickups)
+    if options[:enable_rv]
+      @unplaced_non_progression_pickups -= checker.current_items.map {|item_name| OoEItems.items[item_name][:id]}
+      current_items_ids = checker.current_items.map {|item_name| OoEItems.items[item_name][:id]}
+      @used_non_progression_pickups += (current_items_ids & all_non_progression_pickups)
+    else
+      @unplaced_non_progression_pickups -= checker.current_items
+      @used_non_progression_pickups += (checker.current_items & all_non_progression_pickups)
+    end
     
     if options[:scavenger_mode]
       remove_all_enemy_drops()
@@ -712,7 +746,7 @@ class Randomizer
       if options[:randomize_enemy_drops]
         yield [options_completed, "Randomizing enemy drops..."]
         reset_rng()
-        randomize_enemy_drops()
+        randomize_enemy_drops(checker)
         options_completed += 1
       end
     end
@@ -720,7 +754,11 @@ class Randomizer
     if options[:randomize_pickups]
       yield [options_completed, "Randomizing other pickups..."]
       reset_rng()
-      place_non_progression_pickups()
+      if options[:enable_rv] 
+        rv_place_non_progression_pickups(checker) 
+      else
+        place_non_progression_pickups(checker)
+      end
     end
     
     if room_rando? && options[:rebalance_enemies_in_room_rando] && options[:randomize_pickups]
@@ -736,12 +774,9 @@ class Randomizer
           bosses_in_room = room.entities.select do |e|
             e.is_enemy? && ORIGINAL_BOSS_IDS_ORDER.include?(e.subtype)
           end
-          
           if GAME == "por"
             # Don't count the scripted chase Behemoth as a boss.
             bosses_in_room.reject!{|e| e.subtype == 0x94 && e.var_a == 0}
-          end
-          if GAME == "por"
             # Don't count common enemy The Creature as a boss.
             bosses_in_room.reject!{|e| e.subtype == 0x8B && e.var_b == 2}
           end
@@ -749,7 +784,7 @@ class Randomizer
             # Don't count common enemy Giant Skeleton as a boss.
             bosses_in_room.reject!{|e| e.subtype == 0x6B && e.var_a != 1}
           end
-          
+
           if GAME == "ooe" && room_str == "0E-00-09" && !progression_region.include?("00-0C-00")
             # Albus's room is accessible, but the first room of Dracula's Castle is not.
             # This means the player doesn't meet all the conditions to fight Albus if they want the true ending, so we shouldn't mark Albus's boss fight as accessible yet.
@@ -760,7 +795,7 @@ class Randomizer
             # This means the player doesn't meet all the conditions to fight Barlowe, so we shouldn't mark Barlowe's boss fight as accessible yet.
             next
           end
-          
+
           bosses_in_room.each do |boss_entity|
             boss_id = boss_entity.subtype
             boss_ids_by_order_you_reach_them_for_this_region << boss_id
@@ -998,7 +1033,7 @@ class Randomizer
     
     yield [options_completed, "Applying tweaks..."]
     apply_tweaks()
-    
+  
     # Save all changes made to the game's text once at the end.
     game.text_database.write_to_rom()
   rescue StandardError => e
