@@ -2,7 +2,7 @@
 module PickupRandomizer
 require_relative 'ooe_locations'
 require_relative 'ooe_items'
-require_relative 'ooe_checker'
+require_relative 'rv_checker'
   
   VILLAGER_NAME_TO_EVENT_FLAG = {
     :villagerjacob => 0x2A,
