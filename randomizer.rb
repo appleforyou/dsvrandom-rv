@@ -30,6 +30,7 @@ require_relative 'randomizers/cosmetic/skill_sprites_randomizer'
 require_relative 'randomizers/cosmetic/enemy_sprite_randomizer'
 
 require_relative 'rv/ooe_items'
+require_relative 'rv/rv_checker'
 
 class Randomizer
   include Tweaks
@@ -104,7 +105,7 @@ class Randomizer
     if room_rando?
       @checker = DoorCompletabilityChecker.new(game, options)
     elsif options[:enable_rv]
-      @checker = OoEChecker.new(options)
+      @checker = RVChecker.new(options)
       options[:rv_difficulty] = rv_difficulty
     else
       @checker = CompletabilityChecker.new(game, options)
