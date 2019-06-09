@@ -1,5 +1,7 @@
 
 module DropRandomizer
+require_relative '../rv/ooe_items'
+  
   def randomize_enemy_drops
     if GAME == "ooe"
       if options[:enable_rv] && options[:rv_boss_glyph_dupes]
