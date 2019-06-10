@@ -102,7 +102,7 @@
           <item row="0" column="0">
            <widget class="QCheckBox" name="enable_rv">
             <property name="toolTip">
-             <string>RV logic (OoE only) has more options for item placement, intended for people who are familiar with the game and want to go fast. Not yet compatible with some features like map/villager randomization.</string>
+             <string/>
             </property>
             <property name="text">
              <string>Use RV Options</string>
