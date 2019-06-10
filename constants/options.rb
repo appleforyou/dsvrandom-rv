@@ -1,5 +1,11 @@
 
 OPTIONS = {
+  enable_rv: "RV logic (OoE only) has more options for item placement, intended for people who are familiar with the game and want to go fast. Not yet compatible with some features like map/villager randomization.",
+  rv_open_castle: "Like the Open World Map setting, but also enables access to Dracula's Castle without defeating Barlowe.",
+  rv_boss_spell_dupes: "Glyphs cast by bosses (Albus, Barlowe, Jiang Shi, NOT Wallman) will be chosen from glyphs considered as progression. They will be duplicates, and not necessary for completion of the game. Recommended with early castle to make Albus still worth thinking about.",
+  rv_split_pools: "If checked, glyphs can only appear at vanilla glyph locations, and items can only appear at vanilla item locations.",
+  rv_puzzle_progression: "If checked, progression items can be placed at locations which require certain elemental attack glyphs to solve the puzzle. Not recommended if skill behavior randomization is enabled.",
+  
   randomize_pickups: "Randomizes items and skills you find lying on the ground.",
   randomize_boss_souls: "Randomizes the souls dropped by bosses as well as Wallman's glyph (DoS/OoE only).",
   randomize_world_map_exits: "Randomizes the order areas are unlocked on the world map (OoE only, and the Open World Map option must be disabled).",
