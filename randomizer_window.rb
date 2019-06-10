@@ -24,18 +24,18 @@ class RandomizerWindow < Qt::Dialog
     super(nil, Qt::WindowMinimizeButtonHint)
     @ui = Ui_Randomizer.new
     @ui.setup_ui(self)
-    
+
     # Add three empty items to the clean ROM recent files dropdown, one for each game.
     @ui.clean_rom.addItem("")
     @ui.clean_rom.addItem("")
     @ui.clean_rom.addItem("")
-    
+
     @currently_selected_game = nil
     
     initialize_difficulty_sliders()
     
     preserve_default_settings()
-    
+
     load_settings()
     
     connect(@ui.clean_rom, SIGNAL("activated(int)"), self, SLOT("update_settings()"))
@@ -61,6 +61,7 @@ class RandomizerWindow < Qt::Dialog
     self.setWindowTitle("DSVania Randomizer #{DSVRANDOM_VERSION}")
     
     connect(@ui.difficulty_level, SIGNAL("activated(int)"), self, SLOT("difficulty_level_changed(int)"))
+    connect(@ui.rv_difficulty, SIGNAL("activated(int)"), self, SLOT("difficulty_level_changed(int)"))
     
     connect(@ui.num_seeds_to_create, SIGNAL("activated(int)"), self, SLOT("update_settings()"))
     
@@ -85,7 +86,7 @@ class RandomizerWindow < Qt::Dialog
       
       difficulty_settings_averages = get_current_difficulty_settings_averages()
       
-      randomizer = Randomizer.new(seed, game, options_hash, @settings[:difficulty_level], difficulty_settings_averages)
+      randomizer = Randomizer.new(seed, game, options_hash, @settings[:difficulty_level], difficulty_settings_averages, @settings[:rv_difficulty])
       begin
         randomizer.randomize() {}
       rescue StandardError => e
@@ -119,14 +120,14 @@ class RandomizerWindow < Qt::Dialog
     end
     
     update_last_used_clean_rom_combobox_items()
-    
+
     set_clean_rom_combobox_text(@settings[:clean_rom_path]) if @settings[:clean_rom_path]
     @ui.output_folder.setText(@settings[:output_folder]) if @settings[:output_folder]
     @ui.seed.setText(@settings[:seed]) if @settings[:seed]
     
     # Detects what the selected game is so we know what options to disable.
     detect_current_game_by_clean_rom_combobox_text()
-    
+
     OPTIONS.each_key do |option_name|
       @ui.send(option_name).setChecked(@settings[option_name]) unless @settings[option_name].nil?
     end
@@ -134,6 +135,10 @@ class RandomizerWindow < Qt::Dialog
     num_seeds_index = @ui.num_seeds_to_create.findText(@settings[:num_seeds_to_create].to_s)
     if num_seeds_index != -1
       @ui.num_seeds_to_create.setCurrentIndex(num_seeds_index)
+    end
+    rv_difficulty_index = @ui.rv_difficulty.findText(@settings[:rv_difficulty].to_s)
+    if rv_difficulty_index != -1
+      @ui.rv_difficulty.setCurrentIndex(rv_difficulty_index)
     end
     
     if @settings[:difficulty_level].nil?
@@ -146,7 +151,7 @@ class RandomizerWindow < Qt::Dialog
     else
       # Custom difficulty.
       difficulty_level_changed_by_name("Custom")
-      
+
       form_layout = @ui.scrollAreaWidgetContents.layout
       
       DIFFICULTY_RANGES.keys.each do |option_name|
@@ -205,7 +210,7 @@ class RandomizerWindow < Qt::Dialog
       # Clean ROM text changed, so update the record of what the last used ROM path is, if it's a valid DSVania ROM file.
       detect_current_game_by_clean_rom_combobox_text()
     end
-    
+
     @settings[:clean_rom_path] = @ui.clean_rom.currentText
     @settings[:output_folder] = @ui.output_folder.text
     @settings[:seed] = @ui.seed.text
@@ -225,6 +230,7 @@ class RandomizerWindow < Qt::Dialog
     end
     
     @settings[:num_seeds_to_create] = @ui.num_seeds_to_create.itemText(@ui.num_seeds_to_create.currentIndex)
+    @settings[:rv_difficulty] = @ui.rv_difficulty.itemText(@ui.rv_difficulty.currentIndex)
     
     save_settings()
   end
@@ -241,6 +247,12 @@ class RandomizerWindow < Qt::Dialog
           should_enable_options[child.object_name.to_sym] &&= false
         end
       end
+    end
+    if @ui.enable_rv.checked
+      should_enable_options[:randomize_maps] &&= false
+      should_enable_options[:randomize_villagers] &&= false
+      should_enable_options[:randomize_world_map_exits] &&= false
+      should_enable_options[:randomize_starting_room] &&= false
     end
     
     pickup_randomizer_dependant_options = [
@@ -261,11 +273,11 @@ class RandomizerWindow < Qt::Dialog
     
     room_rando = @ui.randomize_maps.checked || @ui.randomize_starting_room.checked || @ui.randomize_world_map_exits.checked
     #room_rando ||= @ui.randomize_room_connections.checked || @ui.randomize_area_connections.checked
-    
+
     if !room_rando
       should_enable_options[:rebalance_enemies_in_room_rando] &&= false
     end
-    
+
     if @ui.open_world_map.checked
       should_enable_options[:randomize_world_map_exits] &&= false
     end
@@ -275,35 +287,36 @@ class RandomizerWindow < Qt::Dialog
         @ui.send(option_name).enabled = true
       else
         @ui.send(option_name).enabled = false
+        @ui.send(option_name).checked = false
       end
     end
-    
+
     if @ui.randomize_maps.checked
       @ui.randomize_boss_souls.checked = true
       @ui.randomize_boss_souls.enabled = false
     end
-    
+
     if @ui.randomize_world_map_exits.checked && @ui.randomize_world_map_exits.enabled
       @ui.randomize_starting_room.checked = false
       @ui.randomize_starting_room.enabled = false
     end
-    
+
     disable_options_not_for_current_game()
   end
-  
+
   def disable_options_not_for_current_game
     all_game_specific_options = []
     GAME_SPECIFIC_OPTIONS.each do |game, options_for_game|
       all_game_specific_options += options_for_game
     end
     all_game_specific_options.uniq!
-    
+
     all_game_specific_options.each do |option_name|
       if !@ui.send(option_name).enabled
         # This option was already disabled by ensure_valid_combination_of_options, so don't enable it regardless of the game it's for.
         next
       end
-      
+
       if @currently_selected_game.nil?
         # If no game is selected, enable all options.
         @ui.send(option_name).enabled = true
@@ -314,6 +327,7 @@ class RandomizerWindow < Qt::Dialog
         # Disable all options specific to the other games that the selected game does not also support.
         @ui.send(option_name).enabled = false
       end
+      @ui.rv_open_castle.setEnabled(false)
     end
   end
   
@@ -342,10 +356,10 @@ class RandomizerWindow < Qt::Dialog
       end
     end
   end
-  
+
   def detect_current_game_by_clean_rom_combobox_text
     @currently_selected_game = nil
-    
+
     clean_rom_path = @ui.clean_rom.currentText
     if File.file?(clean_rom_path)
       title = File.read(clean_rom_path, 16)
@@ -365,7 +379,7 @@ class RandomizerWindow < Qt::Dialog
       end
     end
   end
-  
+
   def set_clean_rom_combobox_text(text)
     # If this text is one of the items in the dropdown, set that item as the selected one.
     # Otherwise just set the text itself.
@@ -470,7 +484,7 @@ class RandomizerWindow < Qt::Dialog
       end
     end
   end
-  
+
   def difficulty_level_changed(diff_index)
     @ui.difficulty_level.setCurrentIndex(diff_index)
     
@@ -496,27 +510,27 @@ class RandomizerWindow < Qt::Dialog
   
   def get_current_options_hash
     options_hash = {}
-    
+
     OPTIONS.each_key do |option_name|
       # Options that are disabled don't count as being checked, even though they visually remain checked when disabled.
       options_hash[option_name] = @ui.send(option_name).checked && @ui.send(option_name).enabled
     end
-    
+
     return options_hash
   end
-  
+
   def get_current_difficulty_settings_averages
     difficulty_settings_averages = {}
-    
+
     DIFFICULTY_RANGES.keys.each do |option_name|
       slider = @slider_widgets_by_name[option_name]
       average = slider.true_value
       difficulty_settings_averages[option_name] = average
     end
-    
+
     return difficulty_settings_averages
   end
-  
+
   def generate_seed
     # Generate a new random seed composed of 2 adjectives and a noun.
     adjectives = File.read("./dsvrandom/seedgen_adjectives.txt").split("\n").sample(2)
@@ -551,7 +565,7 @@ class RandomizerWindow < Qt::Dialog
     
     game = Game.new
     game.initialize_from_rom(@ui.clean_rom.currentText, extract_to_hard_drive = false)
-    
+
     if !["dos", "por", "ooe"].include?(GAME)
       Qt::MessageBox.warning(self, "Unsupported game", "ROM is not a supported game.")
       return
@@ -578,13 +592,13 @@ class RandomizerWindow < Qt::Dialog
     save_settings()
     
     @sanitized_seed = seed
-    
+
     options_hash = get_current_options_hash()
     
     difficulty_settings_averages = get_current_difficulty_settings_averages()
     
     begin
-      randomizer = Randomizer.new(seed, game, options_hash, @settings[:difficulty_level], difficulty_settings_averages)
+      randomizer = Randomizer.new(seed, game, options_hash, @settings[:difficulty_level], difficulty_settings_averages, @settings[:rv_difficulty])
     rescue StandardError => e
       Qt::MessageBox.critical(self, "Randomization Failed", "Randomization failed with error:\n#{e.message}\n\n#{e.backtrace.join("\n")}")
       return
@@ -738,16 +752,15 @@ class RandomizerWindow < Qt::Dialog
   def open_about
     @about_dialog = Qt::MessageBox.new
     @about_dialog.setTextFormat(Qt::RichText)
-    @about_dialog.setWindowTitle("DSVania Randomizer")
-    base_text = "DSVania Randomizer Version #{DSVRANDOM_VERSION}<br><br>" + 
-      "Created by LagoLunatic<br><br>" + 
-      "Report issues here:<br><a href=\"https://github.com/LagoLunatic/dsvrandom/issues\">https://github.com/LagoLunatic/dsvrandom/issues</a><br><br>" +
-      "Source code:<br><a href=\"https://github.com/LagoLunatic/dsvrandom\">https://github.com/LagoLunatic/dsvrandom</a><br><br>"
+    @about_dialog.setWindowTitle("DSVania Randomizer-RV")
+    base_text = "DSVania Randomizer-RV Version #{DSVRANDOM_VERSION}<br><br>" + 
+      "Created by LagoLunatic, revised by apple_for_you<br><br>" + 
+      "Report issues here:<br><a href=\"https://github.com/appleforyou/dsvrandom-rv/issues\">https://github.com/appleforyou/dsvrandom-rv/issues</a><br><br>" +
+      "Source code:<br><a href=\"https://github.com/appleforyou/dsvrandom-rv\">https://github.com/appleforyou/dsvrandom-rv</a>"
     text = base_text + "Checking for updates..."
     @about_dialog.setText(text)
     @about_dialog.windowIcon = self.windowIcon
     @about_dialog.show()
-    
     
     new_version = check_for_updates()
     if new_version.nil?
@@ -767,10 +780,10 @@ class RandomizerWindow < Qt::Dialog
     OPTIONS.each_key do |option_name|
       @default_settings[option_name] = @ui.send(option_name).checked
     end
-    
+
     @default_difficulty_level = "Normal"
   end
-  
+
   def reset_settings_to_default
     any_setting_changed = false
     OPTIONS.each_key do |option_name|
@@ -783,12 +796,12 @@ class RandomizerWindow < Qt::Dialog
         @ui.send(option_name).checked = default_value
       end
     end
-    
+
     if @ui.difficulty_level.currentText != @default_difficulty_level
       difficulty_level_changed_by_name(@default_difficulty_level)
       any_setting_changed = true
     end
-    
+
     if any_setting_changed
       update_settings()
     else
@@ -806,7 +819,7 @@ class RandomizerWindow < Qt::Dialog
       super(event)
     end
   end
-  
+
   def read_seed_info
     input_seed_info(@ui.paste_seed_info_field.plainText)
   end
