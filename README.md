@@ -43,6 +43,14 @@ I've also changed the default options in the randomizer to a difficulty level wh
 
 These should be enough options to start you off. My hope is that you feel more decisions of how to proceed in the game while you play - more variance like, "Should I check all the items in this area, or only the glyphs?" or, "Should I push ahead into the castle, or should I look around for more gear first?" The goal of RV is to create more decisions like that, so maybe it will work for you.
 
+### Future Plans
+
+* Fix map randomization so that it works with RV. This will involve writing a database of all rooms in the game which I will use for another project.
+* Add more difficulty options, and add more combat progression "requirements" instead of only movement. This will be important for map rando.
+* Add hints to the cats in Wygol Village which gave hints in the vanilla game.
+* Adjust skill behavior randomization to remove some unpleasant aspects and fit better with new elemental reqs in the logic.
+* Figure out what to do with villager randomization. I don't really like how this option works gameplay-wise.
+
 ### Only OoE?
 
 Rewriting the logic for one game has been a nontrivial amount of effort, so I don't see myself doing it for the other DSVanias. I don't think my knowledge of those games is as strong as for OoE, so I'm not sure I could trust myself to balance it the way I'd want, either. If someone else wants to make the item/location/logic databases, then maybe. That's honestly most of the work.
