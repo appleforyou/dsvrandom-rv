@@ -4,7 +4,7 @@ require_relative '../rv/ooe_items'
   
   def randomize_enemy_drops
     if GAME == "ooe"
-      if options[:enable_rv] && options[:rv_boss_glyph_dupes]
+      if options[:enable_rv] && options[:rv_boss_spell_dupes]
         progress_skills = OoEItems.glyphs.select {|key, item| item[:progression]}
         [0x67, 0x72, 0x73].each do |enemy_id|
           pickup_name = ""
