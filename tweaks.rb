@@ -25,6 +25,7 @@ module Tweaks
     if GAME == "ooe"
       if options[:enable_rv]
         game.apply_armips_patch("dsvrandom/rv/ooe_nonlinear_rv.asm", full_path: true)
+        game.apply_armips_patch("ooe_nonlinear_events")
       elsif options[:open_world_map]
         game.apply_armips_patch("ooe_nonlinear")
       else
