@@ -38,7 +38,7 @@ require_relative '../rv/ooe_items'
           end
         end
       else
-      [0x67, 0x72, 0x73].each do |enemy_id|
+        [0x67, 0x72, 0x73].each do |enemy_id|
         # Boss that has a glyph you can absorb during the fight (Jiang Shi, Albus, and Barlowe).
         # Wallman's glyph is not handled here, as that can be a progression glyph.
         
