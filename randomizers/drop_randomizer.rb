@@ -2,7 +2,7 @@
 module DropRandomizer
 require_relative '../rv/ooe_items'
   
-  def randomize_enemy_drops
+  def randomize_enemy_drops(checker)
     if GAME == "ooe"
       if options[:enable_rv] && options[:rv_boss_spell_dupes]
         progress_skills = OoEItems.glyphs.select {|key, item| item[:progression]}
