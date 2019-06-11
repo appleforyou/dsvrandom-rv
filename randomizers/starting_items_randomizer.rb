@@ -61,11 +61,7 @@ module StartingItemsRandomizer
       room.write_entities_to_rom()
       
       location = "#{room_str}_%02X" % (room.entities.length-1)
-      if options[:enable_rv]
-        rv_change_entity_location_to_pickup_id(location, pickup_global_id)
-      else
-        change_entity_location_to_pickup_global_id(location, pickup_global_id)
-      end
+      change_entity_location_to_pickup_global_id(location, pickup_global_id)
     end
   end
   
@@ -82,10 +78,6 @@ module StartingItemsRandomizer
     end
     
     location = "#{@starting_room.room_str}_%02X" % (@starting_room.entities.length-1)
-    if options[:enable_rv]
-      rv_change_entity_location_to_pickup_id(location, pickup_global_id)
-    else
-      change_entity_location_to_pickup_global_id(location, pickup_global_id)
-    end
+    change_entity_location_to_pickup_global_id(location, pickup_global_id)
   end
 end
