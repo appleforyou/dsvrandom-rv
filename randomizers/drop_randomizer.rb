@@ -39,12 +39,13 @@ require_relative '../rv/ooe_items'
         end
       else
         [0x67, 0x72, 0x73].each do |enemy_id|
-        # Boss that has a glyph you can absorb during the fight (Jiang Shi, Albus, and Barlowe).
-        # Wallman's glyph is not handled here, as that can be a progression glyph.
+          # Boss that has a glyph you can absorb during the fight (Jiang Shi, Albus, and Barlowe).
+          # Wallman's glyph is not handled here, as that can be a progression glyph.
         
-        enemy = game.enemy_dnas[enemy_id]
-        enemy["Glyph"] = get_unplaced_non_progression_skill() - SKILL_GLOBAL_ID_RANGE.begin + 1
-        enemy.write_to_rom()
+          enemy = game.enemy_dnas[enemy_id]
+          enemy["Glyph"] = get_unplaced_non_progression_skill() - SKILL_GLOBAL_ID_RANGE.begin + 1
+          enemy.write_to_rom()
+        end
       end
     end
     
