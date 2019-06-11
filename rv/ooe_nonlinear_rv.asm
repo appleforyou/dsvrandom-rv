@@ -30,5 +30,3 @@
   nop
 
 .close
-
-.include "ooe_nonlinear_events.asm"
