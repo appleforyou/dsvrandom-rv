@@ -21,8 +21,8 @@ require_relative 'ooe_logic'
 
   def initialize(options)
     @logic = OoELogic.new(self, options)
-    Locations.set_logic(@logic)
-    Locations.locs.delete_if {|loc| loc[:type].include?("Villager")}
+    OoELocations.set_logic(@logic)
+    OoELocations.locs.delete_if {|loc| loc[:type].include?("Villager")}
     @current_items = []
     @progression_locations = []
     @all_progression_pickups = OoEItems.items.select {|key, item| item[:progression]}
@@ -33,13 +33,13 @@ require_relative 'ooe_logic'
     if options[:rv_difficulty] == "Do Your Worst"
       @all_progression_pickups.delete("Arma Machina")
     end
-    @no_progression_locations = Locations.locs.select {|loc| loc[:type].include?("No Progression")}
-    @enemy_locations = Locations.locs.select {|loc| loc[:container] == "Spell"}
-    @event_locations = Locations.locs.select {|loc| loc[:type].include?("Event")}
+    @no_progression_locations = OoELocations.locs.select {|loc| loc[:type].include?("No Progression")}
+    @enemy_locations = OoELocations.locs.select {|loc| loc[:container] == "Spell"}
+    @event_locations = OoELocations.locs.select {|loc| loc[:type].include?("Event")}
     @easter_egg_locations = []
-    @no_glyph_locations = Locations.locs.select {|loc| loc[:type].include?("No Glyphs")}
-    @hidden_locations = Locations.locs.select {|loc| loc[:container] == "Wall"}
-    @villager_locations = Locations.locs.select {|loc| loc[:type].include?("Villager")}
+    @no_glyph_locations = OoELocations.locs.select {|loc| loc[:type].include?("No Glyphs")}
+    @hidden_locations = OoELocations.locs.select {|loc| loc[:container] == "Wall"}
+    @villager_locations = OoELocations.locs.select {|loc| loc[:type].include?("Villager")}
     @preferences =   {
       "Cat Tackle": 0.1,
       "Arma Felix": 0.1,
@@ -62,7 +62,7 @@ require_relative 'ooe_logic'
   def get_accessible_locations
     accessible_locations = []
     
-    Locations.locs.each do |loc|
+    OoELocations.locs.each do |loc|
       if loc[:available][]
         accessible_locations << loc
       end
