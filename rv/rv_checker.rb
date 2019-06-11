@@ -7,6 +7,7 @@ require_relative 'ooe_logic'
               :all_progression_pickups,
               :no_progression_locations,
               :event_locations,
+              :easter_egg_locations,
               :enemy_locations,
               :no_glyph_locations,
               :hidden_locations,
@@ -35,6 +36,7 @@ require_relative 'ooe_logic'
     @no_progression_locations = Locations.locs.select {|loc| loc[:type].include?("No Progression")}
     @enemy_locations = Locations.locs.select {|loc| loc[:container] == "Spell"}
     @event_locations = Locations.locs.select {|loc| loc[:type].include?("Event")}
+    @easter_egg_locations = []
     @no_glyph_locations = Locations.locs.select {|loc| loc[:type].include?("No Glyphs")}
     @hidden_locations = Locations.locs.select {|loc| loc[:container] == "Wall"}
     @villager_locations = Locations.locs.select {|loc| loc[:type].include?("Villager")}
