@@ -9,7 +9,7 @@
   ldr r14, =021003CCh
   ldr r0, [r14]
   mvn r1, 0h
-  orr r0, r0, r1 ; Set all bits except the 2 lowest bits (which are for Dracula's Castle).
+  orr r0, r0, r1 ;
   stmia [r14]!, r0, r1
   b 0223B840h
   .pool
