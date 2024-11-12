@@ -22,10 +22,10 @@ module Tweaks
       tiled.read(filename, room)
     end
     
-    if GAME == "ooe"
-      if options[:open_world_map]
-        game.apply_armips_patch("ooe_nonlinear")
-      else
+    if GAME == "ooe" 
+      if options[:enable_rv]
+        game.apply_armips_patch("dsvrandom/rv/ooe_nonlinear_rv.asm", full_path: true)
+      elsif options[:open_world_map]
         # Even if the user doesn't want the world map opened up we still make the events capable of being accessed nonlinearly.
         game.apply_armips_patch("ooe_nonlinear_events")
       end
@@ -819,6 +819,10 @@ module Tweaks
       # We need to raise the sould candle's Z-pos from 5200 to 5600 so it appears on top of the save point.
       game.fs.write(0x021A4444, [0x56].pack("C"))
       # Note that this also affects other candles besides soul candles. Hopefully it doesn't make them look weird in any rooms.
+    end
+
+    if GAME == "ooe" && options[:rv_unlock_albus]
+      game.apply_armips_patch("dsvrandom/rv/ooe_unlock_albus.asm", full_path: true)
     end
     
     if GAME == "ooe" && options[:always_dowsing]
