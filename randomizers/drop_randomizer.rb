@@ -1,14 +1,61 @@
 
 module DropRandomizer
-  def randomize_enemy_drops
+  def randomize_enemy_drops(checker)
     if GAME == "ooe"
-      [0x67, 0x72, 0x73].each do |enemy_id|
+      if options[:enable_rv]
+        progress_skills = OoEItems.glyphs.select {|key, item| item[:progression]}
+        progress_damage_skills = OoEItems.glyphs.select {|key, item| (item[:progression]) && (item[:type] == "Damaging")}
+        damage_skills = OoEItems.glyphs.select {|key, item| item[:type] == "Damaging"}
+        [0x67, 0x72, 0x73].each do |enemy_id|
+          pickup_name = ""
+          jiangshi_pickup_name = ""
+
+          # Boss that has a glyph you can absorb during the fight (Jiang Shi, Albus, and Barlowe).
+          # Wallman's glyph is not handled here, as that can be a progression glyph.
+
+          enemy = game.enemy_dnas[enemy_id]
+          #my stuff
+          loop do |softlockable_glyph|
+            if (!options[:rv_unlock_albus]) || (enemy_id == 0x67)
+              pickup_name = progress_skills.keys.sample(random: rng)
+              enemy["Glyph"] = progress_damage_skills[pickup_name][:id] + 1
+              jiangshi_pickup_name = pickup_name
+            elsif enemy_id == 0x72
+              pickup_name = damage_skills.keys.sample(random: rng)
+              enemy["Glyph"] = damage_skills[pickup_name][:id] + 1
+            else
+              pickup_name = progress_damage_skills.keys.sample(random: rng)
+              enemy["Glyph"] = progress_damage_skills[pickup_name][:id] + 1
+            end
+            sotflockable_glyph = false
+            if softlock_prone_items.include?(enemy["Glyph"])
+              softlockable_glyph = true
+            end
+            break if not softlockable_glyph
+          end
+          enemy.write_to_rom()
+          #pickup_str = "pickup %04X (#{pickup_name})" % (enemy["Glyph"]-1)
+          #spoiler_str = "  Placing #{pickup_str} at #{enemy_id.to_s}"
+          #spoiler_log.puts spoiler_str
+          if enemy_id == 0x67
+            #Add a hint to Monastery Albus event to make killing that boss worth even a tiny something.
+            #Doesn't work if dialog randomization is enabled, should probably move this there.
+            newlines = game.text_database.text_list[0x674].decoded_string.split(/((?:\{[^}]+\})+)/)
+            newlines[2] = "\nShanoa! The Large Cavern holds\\n\nthe #{jiangshi_pickup_name} glyph!\\n\n"
+            game.text_database.text_list[0x674].decoded_string = newlines.join
+            #spoiler_log.puts game.text_database.text_list[0x674].decoded_string
+            game.text_database.write_to_rom()
+          end
+        end
+      else
+        [0x67, 0x72, 0x73].each do |enemy_id|
         # Boss that has a glyph you can absorb during the fight (Jiang Shi, Albus, and Barlowe).
         # Wallman's glyph is not handled here, as that can be a progression glyph.
         
         enemy = game.enemy_dnas[enemy_id]
         enemy["Glyph"] = get_unplaced_non_progression_skill() - SKILL_GLOBAL_ID_RANGE.begin + 1
         enemy.write_to_rom()
+      end
       end
     end
     
