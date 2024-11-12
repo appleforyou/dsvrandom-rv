@@ -18,7 +18,7 @@ module DropRandomizer
           loop do |softlockable_glyph|
             if (!options[:rv_unlock_albus]) || (enemy_id == 0x67)
               pickup_name = progress_skills.keys.sample(random: rng)
-              enemy["Glyph"] = progress_damage_skills[pickup_name][:id] + 1
+              enemy["Glyph"] = progress_skills[pickup_name][:id] + 1
               jiangshi_pickup_name = pickup_name
             elsif enemy_id == 0x72
               pickup_name = damage_skills.keys.sample(random: rng)
