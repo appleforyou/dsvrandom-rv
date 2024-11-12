@@ -2,7 +2,7 @@
 
 RV is a work-in-progress randomizer for Order of Ecclesia, focused on providing multiple options for how to randomize glyph/item locations in OoE. It's a revision of a DSVania randomizer created by LagoLunatic. The logic is rewritten, allowing the player to choose more options for how they want to randomize items, but the two biggest changes from the original randomizer are:
 
-1. Dracula's Castle is unlocked on the world map immediately, without having to fight Albus. You still need items to get anywhere in it, though.
+1. Dracula's Castle is unlocked on the world map immediately, without having to fight Albus. You still need items to get anywhere in it, though. Now you can fight Albus and Barlowe anytime, too.
 2. Logic is customizable so that you could have glyphs and items randomized in separate pools - the Magnes glyph would not appear where equipment was in the vanilla game, for example.
 
 The intent of RV is to create more variety in the ways that the player can approach a given seed, and offer more options for difficulty settings. Default settings should also in the process decrease the average length of a seed while increasing the likelihood of challenging boss fights. It was ultimately created to satisfy my own wishes for how I want to play seeds, but I think the end result should be something closer to the difficulty curve of the original game.
@@ -34,6 +34,7 @@ I fully intend to restore the map randomizer functionality, but it's a big proje
 Okay, so what exactly does RV do for you? The options are limited in the initial release, but they're enough for a starting point:
 
 * Dracula's Castle can be unlocked
+* Albus and Barlowe can now be fought at any time without requiring villager collection
 * Item/Glyph locations can be randomized in separate pools
 * The player can select a difficulty level for item placement, representing what kind of challenges they are comfortable with. More options will likely be added later, but currently there's three: Vanilla, Creative, and Do Your Worst. The difficulty levels are explained further in the options tab, but as an example, Vanilla doesn't place progression at Training Hall, Creative does, and Do Your Worst can place progression at Training Hall even if your only progression items are Redire/Magnes.
 * You can choose whether or not you want to do Cubus/Morbus puzzles for progression. This could just be player preference, and more choices like this will probably be added, but this one was important because those puzzles are a no-go if you're using glyph element/behavior randomization.
@@ -50,6 +51,7 @@ These should be enough options to start you off. My hope is that you feel more d
 * Add hints to the cats in Wygol Village which gave hints in the vanilla game.
 * Adjust skill behavior randomization to remove some unpleasant aspects and fit better with new elemental reqs in the logic.
 * Figure out what to do with villager randomization. I don't really like how this option works gameplay-wise.
+* Adjust enemy randomization to gel more nicely with the way OoE works.
 
 ### Only OoE?
 
