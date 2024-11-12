@@ -33,8 +33,8 @@
 ; Makes Nikolai (event 67) appear without having completed Monastery (event flag 6).
 .org 0x02233270
   nop
-;.org 0x02233280
-;  mov r1, 0h
+.org 0x02233280
+  mov r1, 0h
 
 
 ; Fixes object 60 (various Ecclesia events) so that the events that happen after killing Albus take precedence over the ones that happen before it.
