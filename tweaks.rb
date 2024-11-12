@@ -2,9 +2,12 @@
 module Tweaks
   def apply_pre_randomization_tweaks
     @tiled = TMXInterface.new
-    
-    game.fix_unnamed_skills()
-    
+
+    # Add a free space overlay so we can add entities as much as we want.
+    if !game.fs.has_free_space_overlay?
+      game.add_new_overlay()
+    end
+
     if GAME == "dos"
       # Make the drawbridge stay permanently down once the player has lowered it.
       game.apply_armips_patch("dos_drawbridge_stays_down")
@@ -15,73 +18,16 @@ module Tweaks
       tiled.read(filename, room)
     end
     
-    if GAME == "dos"
-      # Modify the level design of the room after Flying Armor to not require a backdash jump to go from right to left.
-      filename = "./dsvrandom/roomedits/dos_00-00-08.tmx"
-      room = game.areas[0].sectors[0].rooms[8]
-      tiled.read(filename, room)
-    end
-    
     if GAME == "ooe" 
+
       if options[:enable_rv]
         game.apply_armips_patch("dsvrandom/rv/ooe_nonlinear_rv.asm", full_path: true)
       elsif options[:open_world_map]
+        game.apply_armips_patch("ooe_nonlinear")
+      else
         # Even if the user doesn't want the world map opened up we still make the events capable of being accessed nonlinearly.
         game.apply_armips_patch("ooe_nonlinear_events")
       end
-    end
-    
-    if GAME == "ooe" && !options[:open_world_map]
-      # Make both Ecclesia and Wygol unlocked at the start instead of just Ecclesia.
-      game.apply_armips_patch("ooe_wygol_unlocked_at_start")
-    end
-    
-    if GAME == "ooe"
-      # Change various things so that most of the hardcoded world map unlocks are removed and instead done via exit objects.
-      # (Note that this also means you don't need to talk to Barlowe to unlocks certain things anymore.)
-      
-      # Make Ecclesia unlock Monastery via its exit instead of via a cutscene.
-      ecclesia_exit = game.entity_by_str("02-00-03_00")
-      ecclesia_exit.var_a = 0x12 # Unlock Monastery
-      ecclesia_exit.write_to_rom()
-      
-      # Add new back exits to areas that would normally have the next area unlocked via a cutscenes.
-      # To do this the level design of the rooms needs to be modified to add a hole to them.
-      [
-        [0x12, 0, 0x14], # Monastery. (Unlocks Ruvas Forest.)
-        [0x11, 0, 0x08], # Skeleton Cave. (Unlocks Somnus Reef.)
-        [0x10, 0, 0x00], # Oblivion Ridge. (Unlocks Argila Swamp.)
-      ].each do |area_index, sector_index, room_index|
-        filename = "./dsvrandom/roomedits/ooe_linear_%02X-%02X-%02X.tmx" % [area_index, sector_index, room_index]
-        room = game.areas[area_index].sectors[sector_index].rooms[room_index]
-        tiled.read(filename, room)
-        
-        # Also update the map tile to be an entrance.
-        map = game.get_map(area_index, sector_index)
-        map_tile = map.tiles.find{|tile| tile.x_pos == room.x_pos &&  tile.y_pos == room.y_pos}
-        map_tile.is_entrance = true
-        map.write_to_rom()
-      end
-      
-      # Remove the hardcoded world map unlocks from cutscene code.
-      # Remove the code in Ecclesia that unlocks Monastery.
-      game.fs.load_overlay(42)
-      game.fs.write(0x022C49F4, [0xE1A00000].pack("V")) # nop
-      # Remove the code in Monastery that unlocks Wygol.
-      game.fs.load_overlay(78)
-      game.fs.write(0x022C2AD4, [0xE1A00000].pack("V")) # nop
-      # Remove the code in Wygol that unlocks Ruvas, and makes Minera visible.
-      game.fs.load_overlay(41)
-      game.fs.write(0x022C2B30, [0xE1A00000].pack("V")) # nop
-      game.fs.write(0x022C2B3C, [0xE1A00000].pack("V")) # nop
-      # Remove the code in Ecclesia that unlocks Argila, and makes Mystery Manor visible.
-      game.fs.load_overlay(42)
-      game.fs.write(0x022C51EC, [0xE1A00000].pack("V")) # nop
-      game.fs.write(0x022C51F8, [0xE1A00000].pack("V")) # nop
-      # Remove the code in Wygol that unlocks Somnus, and makes Giant's Dwelling visible.
-      game.fs.load_overlay(41)
-      game.fs.write(0x022C2680, [0xE1A00000].pack("V")) # nop
-      game.fs.write(0x022C268C, [0xE1A00000].pack("V")) # nop
     end
     
     if GAME == "ooe" && options[:open_world_map] && !room_rando?
@@ -100,6 +46,11 @@ module Tweaks
       layer.tiles[0x2AD].index_on_tileset = 0x378
       layer.tiles[0x2AE].index_on_tileset = 0x378
       layer.write_to_rom()
+    end
+    
+    if GAME == "ooe"
+      # Fixes a crash that happens if you exit the Lighthouse and enter Kalidus without having entered Kalidus before the Lighthouse.
+      game.apply_armips_patch("ooe_fix_kalidus_back_entrance_crash")
     end
     
     if GAME == "ooe"
@@ -255,7 +206,7 @@ module Tweaks
       end
     end
     
-    if GAME == "dos" && options[:randomize_maps]
+    if GAME == "dos" && options[:randomize_rooms_map_friendly]
       # Remove the cutscene where Yoko gives you a magic seal in the drawbridge room for map rando.
       # This cutscene puts you in the topleft door - but that door might be removed and blocked off in map rando, in which case the player will be put out of bounds.
       room = game.room_by_str("00-00-15")
@@ -286,51 +237,18 @@ module Tweaks
       game.fs.write(0x0206D994, [25].pack("C"))
     end
     
-    if GAME == "ooe" && options[:randomize_villagers]
-      # Add support for randomizing George, since in vanilla his rescue seen was part of a cutscene tied to Skeleton Cave.
-      game.apply_armips_patch("ooe_allow_moving_george")
-      
-      # Replace the cutscene where you see Albus and then rescue George with the generic villager object so George can be randomized.
-      albus_event = game.entity_by_str("11-00-08_01")
-      albus_event.type = 0
-      albus_event.write_to_rom()
-      george_event = game.entity_by_str("11-00-08_02")
-      george_event.x_pos = 0x40
-      george_event.y_pos = 0xB0
-      george_event.subtype = 0x89 # Generic object for a villager trapped in Torpor
-      george_event.var_b = 0
-      george_event.write_to_rom()
-    end
-    
-    if options[:randomize_enemies] && GAME == "dos"
-      # Remove Mothman's vanilla searchlight if enemy randomizer is on, since it won't do anything without Mothman himself.
-      vanilla_searchlight = game.entity_by_str("00-09-12_00")
-      vanilla_searchlight.type = 0
-      vanilla_searchlight.write_to_rom()
-    end
-    
-    
-    
-    # Add a free space overlay so we can add entities as much as we want.
-    if !game.fs.has_free_space_overlay?
-      game.add_new_overlay()
-    end
-    
     # Now apply any ASM patches that go in the free space overlay first.
     
-    if GAME == "dos"
+    if options[:add_magical_tickets] && GAME == "dos"
       dos_implement_magical_tickets()
     end
     
-    if GAME == "por"
-      # Remove the requirement that you must beat Stella and talk to Wind about her locket before entering the Forest of Doom portrait.
-      game.fs.write(0x02079280, [0xEA000005].pack("V")) # "b 0207929Ch" Skip the forest of doom specific code
-      
-      # And remove the cutscene where Charlotte stops you from entering the Forest of Doom portrait.
-      # This cutscene softlocks the game if it plays but the portrait also lets you go in.
-      forest_cutscene = game.entity_by_str("00-08-01_03")
-      forest_cutscene.type = 0
-      forest_cutscene.write_to_rom()
+    if GAME == "por" && options[:randomize_portraits]
+      # We apply a patch in portrait randomizer that will show a text popup when the player tries to enter the Forest of Doom early.
+      # Without this patch there is no indication as to why you can't enter the portrait, as the normal event doesn't work outside the sector the portrait is normally in.
+      game.apply_armips_patch("por_show_popup_for_locked_portrait")
+      game.text_database.text_list[0x4BE].decoded_string = "You must beat Stella and talk to Wind\\nto unlock the Forest of Doom."
+      game.text_database.write_to_rom()
     end
     
     # Fix the bugs where an incorrect map tile would get revealed when going through doors in the room randomizer (or sliding puzzle in vanilla DoS).
@@ -369,83 +287,6 @@ module Tweaks
       renderer.save_palette_by_specific_palette_pointer(0x02079D5C, colors)
     end
     
-    if GAME == "dos" && options[:randomize_bosses]
-      game.apply_armips_patch("dos_balore_face_player")
-    end
-    
-    if GAME == "ooe" && options[:randomize_bosses]
-      game.apply_armips_patch("ooe_boss_orb_reloads_room")
-    end
-    
-    if GAME == "dos" && options[:randomize_bosses]
-      game.apply_armips_patch("dos_fix_bosses_not_playing_music")
-    end
-    
-    if GAME == "dos"
-      game.apply_armips_patch("dos_new_map_tile_color")
-    end
-    
-    if GAME == "dos"
-      game.apply_armips_patch("dos_prevent_multiple_cutscenes_in_first_room")
-    end
-    
-    if GAME == "ooe"
-      # Apply a patch to fix a crash that happens in vanilla when you unlock the back Kalidus entrance before ever visiting the front entrance.
-      # Which patch we use depends on whether world map exits are randomized or not.
-      if options[:randomize_world_map_exits]
-        # If world map exits are randomized, we need unlocking the back entrance to not automatically unlock the front entrance as well.
-        # So this patch allows setting var B to 3 to unlock the front entrance, or 1 to unlock the back entrance.
-        game.apply_armips_patch("ooe_allow_separate_kalidus_entrance_unlocks")
-      else
-        # If world map exits are not randomized, we can just have it so unlocking the back exit unlocks both the front and back entrances at the same time.
-        game.apply_armips_patch("ooe_fix_kalidus_back_entrance_crash")
-      end
-    end
-    
-    if GAME == "por"
-      # Allow using warp points to go between different area maps.
-      game.apply_armips_patch("por_inter-area_warps")
-    end
-    
-    if GAME == "ooe"
-      # Allow using warp points to go between different area maps.
-      game.apply_armips_patch("ooe_inter-area_warps")
-    end
-    
-    if GAME == "por" && options[:show_map_markers_on_top_screen]
-      game.apply_armips_patch("por_map_markers_on_top_screen")
-      
-      # The patch handles the code, but the top screen doesn't normally have the correct GFX or palette to display the markers.
-      # So we need to copy the appropriate parts of the GFX image and the appropriate palette from the bottom screen to the top screen.
-      
-      bottom_screen_ui_palette_ptr = 0x022C1554
-      bottom_screen_ui_palette_index = 4
-      top_screen_ui_palette_ptr = 0x022C1490
-      top_screen_ui_palette_index = 5
-      
-      marker_palette = renderer.generate_palettes(bottom_screen_ui_palette_ptr, 16)[bottom_screen_ui_palette_index]
-      renderer.save_palette(marker_palette, top_screen_ui_palette_ptr, top_screen_ui_palette_index, 16)
-      
-      bottom_screen_ui_gfx_ptr = 0x022CDA9C
-      top_screen_ui_gfx_ptr = 0x022CBA90
-      bottom_gfx = GfxWrapper.new(bottom_screen_ui_gfx_ptr, game.fs)
-      top_gfx = GfxWrapper.new(top_screen_ui_gfx_ptr, game.fs)
-      
-      bottom_image = renderer.render_gfx_page(bottom_gfx, marker_palette)
-      marker_image = bottom_image.crop(32, 0, 16, 16)
-      top_image = renderer.render_gfx_1_dimensional_mode(top_gfx, marker_palette)
-      top_image.compose!(marker_image, 112, 0)
-      renderer.save_gfx_page_1_dimensional_mode(top_image, top_gfx, top_screen_ui_palette_ptr, 16, top_screen_ui_palette_index)
-    end
-    
-    if GAME == "ooe" && options[:show_map_markers_on_top_screen]
-      game.apply_armips_patch("ooe_map_markers_on_top_screen")
-    end
-    
-    if GAME == "por"
-      game.apply_armips_patch("por_fix_waterwheel_particle_crash")
-    end
-    
     # Then tell the free space manager that the entire file is available for free use, except for the parts we've already used with the above patches.
     new_overlay_path = "/ftc/overlay9_#{NEW_OVERLAY_ID}"
     new_overlay_file = game.fs.files_by_path[new_overlay_path]
@@ -465,6 +306,7 @@ module Tweaks
     end
     text = game.text_database.text_list[game_start_text_id]
     text.decoded_string = "Starts a new game. Seed:\\n#{@seed}"
+    game.text_database.write_to_rom()
     
     if GAME == "dos"
       # Modify that one pit in the Demon Guest House so the player can't get stuck in it without double jump.
@@ -486,24 +328,12 @@ module Tweaks
       boss_door.write_to_rom()
     end
     
-    if (options[:randomize_boss_souls] || options[:randomize_bosses]) && GAME == "dos"
+    if options[:randomize_boss_souls] && GAME == "dos"
       # If the player beats Balore but doesn't own Balore's soul they will appear stuck. (Though they could always escape with suspend.)
-      # Also if Balore is put in a random room the blocks won't fit at all in that room.
       # So get rid of the line of code Balore runs when he dies that recreates the Balore blocks in the room.
       
       game.fs.load_overlay(23)
       game.fs.write(0x02300808, [0xE1A00000].pack("V"))
-    end
-    
-    if GAME == "dos" && options[:randomize_bosses]
-      # When you kill a boss, they depend on the magic seal being created properly, otherwise they softlock the game and never die.
-      # Death has so many GFX pages that if there are any other things in the room with him (such as Gergoth's floors) the magic seal doesn't have enough extra memory to load in.
-      # So when boss randomizer is on we need to make the magic seal still set 020F6E0B,1 on to indicate the magic seal was completed.
-      # In MakeMagicSeal, nop out the 2 lines that would return early if the magic seals's GFX couldn't be loaded.
-      # Even without its graphics, the magic seal still functions as normal - it's just the "completed visual" won't show up.
-      # Also, Death's body and scythes get sucked into the upper left corner of the room instead of the magic seal, since the magic seal doesn't exist.
-      game.fs.write(0x02215800, [0xE1A00000].pack("V"))
-      game.fs.write(0x02215804, [0xE1A00000].pack("V"))
     end
     
     if options[:randomize_enemies] && GAME == "por"
@@ -553,20 +383,6 @@ module Tweaks
       game.apply_armips_patch("dos_julius_start_with_tower_key")
     end
     
-    if GAME == "dos" && !options[:randomize_maps]
-      # Update the vanilla map to show mirror rooms in orange.
-      # (The map rando handles doing this when it's on, so this tweak only needs to be run when the map rando is off.)
-      map = game.get_map(0, 0)
-      map.tiles.each do |tile|
-        next if tile.is_blank
-        
-        room = game.areas[0].sectors[tile.sector_index].rooms[tile.room_index]
-        
-        tile.is_entrance = room.entities.any?{|e| e.is_special_object? && e.subtype == 0xA} # Mirror
-      end
-      map.write_to_rom()
-    end
-    
     if GAME == "por" && options[:fix_infinite_quest_rewards]
       game.apply_armips_patch("por_fix_infinite_quest_rewards")
     end
@@ -579,28 +395,33 @@ module Tweaks
       game.apply_armips_patch("por_nerf_enemy_resistances")
     end
     
-    if GAME == "por"
-      # Update the boss indexes corresponding to each of the portraits.
-      # These can be changed by the boss randomizer.
-      # These must be updated so Burnt Paradise and 13th Street know what boss unlocks them.
-      # Also so the monster overlay on the front of the portrait knows when to disappear.
-      @boss_id_for_each_portrait.each do |portrait_name, boss_id|
-        boss_index = BOSS_ID_TO_BOSS_INDEX[boss_id]
-        area_index = PickupRandomizer::PORTRAIT_NAME_TO_DATA[portrait_name][:area_index]
-        game.fs.write(0x020F4E78+area_index, [boss_index].pack("C"))
-      end
-    end
-    
-    if GAME == "por"
-      # Update the boss death flags checked by the studio portrait.
-      # These can be modified by both short mode and the boss randomizer.
+    if GAME == "por" && options[:por_short_mode]
+      portraits_needed_to_open_studio_portrait = PickupRandomizer::PORTRAIT_NAMES - [:portraitnestofevil] - @portraits_to_remove
       boss_flag_checking_code_locations = [0x02076B84, 0x02076BA4, 0x02076BC4, 0x02076BE4]
-      @portraits_needed_to_open_studio_portrait.each_with_index do |portrait_name, i|
-        boss_id = @boss_id_for_each_portrait[portrait_name]
-        boss_index = BOSS_ID_TO_BOSS_INDEX[boss_id]
+      portraits_needed_to_open_studio_portrait.each_with_index do |portrait_name, i|
+        new_boss_flag = case portrait_name
+        when :portraitcityofhaze
+          0x2
+        when :portraitsandygrave
+          0x80
+        when :portraitnationoffools
+          0x20
+        when :portraitforestofdoom
+          0x40
+        when :portraitdarkacademy
+          0x200
+        when :portraitburntparadise
+          0x800
+        when :portraitforgottencity
+          0x400
+        when :portrait13thstreet
+          0x100
+        else
+          raise "Invalid portrait name: #{portrait_name}"
+        end
         
         code_location = boss_flag_checking_code_locations[i]
-        game.fs.replace_hardcoded_bit_constant(code_location, boss_index)
+        game.fs.replace_arm_shifted_immediate_integer(code_location, new_boss_flag)
       end
     end
     
@@ -629,7 +450,7 @@ module Tweaks
           
           tile_x_off = (tile.x_pos - room.room_xpos_on_map) * SCREEN_WIDTH_IN_PIXELS
           tile_y_off = (tile.y_pos - room.room_ypos_on_map) * SCREEN_HEIGHT_IN_PIXELS
-          tile.is_entrance = room.entities.any? do |e|
+          tile.is_entrance = room.entities.find do |e|
             if e.is_special_object? && [0x1A, 0x76, 0x86, 0x87].include?(e.subtype)
               # Portrait.
               # Clamp the portrait's X and Y within the bounds of the room so we can detect that it's on a tile even if it's slightly off the edge of the room.
@@ -638,6 +459,8 @@ module Tweaks
               
               # Then check if the clamped X and Y are within the current tile.
               (tile_x_off..tile_x_off+SCREEN_WIDTH_IN_PIXELS-1).include?(x) && (tile_y_off..tile_y_off+SCREEN_HEIGHT_IN_PIXELS-1).include?(y)
+            else
+              false
             end
           end
         end
@@ -782,14 +605,14 @@ module Tweaks
       end
     end
     
-    if GAME == "por" && (options[:randomize_starting_room] || options[:randomize_maps])
+    if GAME == "por" && (options[:randomize_starting_room] || options[:randomize_rooms_map_friendly])
       # If the starting room (or map) is randomized, we need to lower the drawbridge by default or the player can't ever reach the first few rooms of the entrance.
       # Do this by making the drawbridge think the game mode is Richter mode, since it automatically lowers itself in that case.
       game.fs.load_overlay(78)
       game.fs.write(0x022E8880, [0xE3A01001].pack("V")) # mov r1, 1h
     end
     
-    if GAME == "por" && (options[:randomize_area_connections] || options[:randomize_maps])
+    if GAME == "por" && (options[:randomize_area_connections] || options[:randomize_rooms_map_friendly])
       # Some bosses (e.g. Stella) connect directly to a transition room.
       # This means the boss door gets placed in whatever transition room gets connected to the boss by the area randomizer.
       # But almost all transition room hiders have a higher Z-position than boss doors, hiding the boss door.
@@ -819,10 +642,6 @@ module Tweaks
       # We need to raise the sould candle's Z-pos from 5200 to 5600 so it appears on top of the save point.
       game.fs.write(0x021A4444, [0x56].pack("C"))
       # Note that this also affects other candles besides soul candles. Hopefully it doesn't make them look weird in any rooms.
-    end
-
-    if GAME == "ooe" && options[:rv_unlock_albus]
-      game.apply_armips_patch("dsvrandom/rv/ooe_unlock_albus.asm", full_path: true)
     end
     
     if GAME == "ooe" && options[:always_dowsing]
@@ -858,7 +677,7 @@ module Tweaks
           skill = game.items[skill_global_id]
           is_spell = skill["??? bitfield"][2]
           next unless is_spell
-          next if SKILLS_THAT_CANT_GAIN_SP.include?(skill.name)
+          next if NONOFFENSIVE_SKILL_NAMES.include?(skill.name)
           
           skill_extra_data = game.items[skill_global_id+0x6C]
           case skill.name
@@ -891,6 +710,10 @@ module Tweaks
       boss_door.write_to_rom()
     end
     
+    if options[:name_unnamed_skills]
+      game.fix_unnamed_skills()
+    end
+    
     if options[:unlock_all_modes]
       game.apply_armips_patch("#{GAME}_unlock_everything")
     end
@@ -905,17 +728,6 @@ module Tweaks
     
     if GAME == "por" && options[:always_show_drop_percentages]
       game.apply_armips_patch("por_always_show_drop_percentages")
-    end
-    
-    if GAME == "por"
-      # Fix common enemy creature setting boss death flag.
-      game.apply_armips_patch("por_fix_the_creature_boss_death_flag")
-    end
-    
-    if GAME == "por"
-      # Make Speed Up's effect not run out after 60 seconds.
-      # Change conditional branch for the timer being above 0 into an unconditional branch.
-      game.fs.write(0x021EE19C, [0xEA000003].pack("V"))
     end
     
     if GAME == "dos"
@@ -946,7 +758,7 @@ module Tweaks
       game.fs.write(0x021C7518, [0xE1A00000].pack("V")) # Same as above, but this is for if the player watched the cutscene instead of skipping it.
     end
     
-    if GAME == "dos" && options[:randomize_maps]
+    if GAME == "dos" && options[:randomize_rooms_map_friendly]
       # The game doesn't let you explore the center of the Abyss map because that's where Menace's room normally is.
       # We need to allow exploring the center since other rooms can get placed there by the map rando.
       game.fs.write(0x02023264, [0xE1A00000].pack("V"))
@@ -955,12 +767,6 @@ module Tweaks
       room = game.room_by_str("00-0B-23")
       game.fs.write(0x02024C9C, [room.room_xpos_on_map].pack("C"))
       game.fs.write(0x02024CA4, [room.room_ypos_on_map].pack("C"))
-    end
-    
-    if GAME == "dos" && options[:randomize_maps]
-      # Don't draw the floors of Gergoth's tower on randomized maps.
-      # Not only is it unnecessary, they would be drawn on the wrong spot, potentially covering up doors that happen to be in the same spot.
-      game.fs.write(0x020230D4, [0xEA000058].pack("V"))
     end
     
     if GAME == "ooe" && room_rando?
@@ -986,14 +792,6 @@ module Tweaks
       dos_set_soma_mode_final_boss(:somacula)
     end
     
-    if GAME == "ooe" && options[:randomize_world_map_exits]
-      # Don't make the castle's back exit unlock Training Hall in world map exit rando, since something else was randomized to unlock it.
-      # (The castle back exit still unlocks Large Cavern though, that's not randomized.)
-      castle_back_exit = game.entity_by_str("00-02-1B_00")
-      castle_back_exit.var_a = 0
-      castle_back_exit.write_to_rom()
-    end
-    
     if room_rando?
       center_bosses_for_room_rando()
     end
@@ -1016,6 +814,7 @@ module Tweaks
     desc = game.text_database.text_list[TEXT_REGIONS["Item Descriptions"].begin + item["Item ID"]]
     name.decoded_string = "Magical Ticket"
     desc.decoded_string = "An old pass that returns\\nyou to the Lost Village."
+    game.text_database.write_to_rom()
     
     gfx_file = game.fs.files_by_path["/sc/f_item2.dat"]
     palette_pointer = 0x022C4684
@@ -1111,6 +910,7 @@ module Tweaks
     when "ooe"
       desc.decoded_string = "A one-way pass to return\\nto your starting room immediately."
     end
+    game.text_database.write_to_rom()
     
     # Also set the magical ticket's price to 0 so it can't be sold.
     item["Price"] = 0
