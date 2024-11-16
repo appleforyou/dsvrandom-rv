@@ -20,29 +20,27 @@
 .org @FreeSpace
 ; Sets all villagers as rescued to enable Albus to be fought at any time.
 @SetVillagers:
-  mov r3, r14
-  ldr r14, =0210038Ch ;=02100388h
-  ldr r1, [r14]
+  ldr r3, =0210038Ch ;=02100388h
+  ldr r1, [r3]
   orr r1, r1, 00002400h
   orr r1, r1, 00040000h
   orr r1, r1, 11000000h
-  str r1, [r14]
-  ldr r1, [r14, 4h]
+  str r1, [r3]
+  ldr r1, [r3, 4h]
   orr r1, r1, 00000001h
   orr r1, r1, 00000880h
   orr r1, r1, 00088000h
   orr r1, r1, 00800000h
-  str r1, [r14, 4h]
+  str r1, [r3, 4h]
 ; Also sets albus's memories cutscene as seen, which enables Barlowe to be fought anytime.
-  ldr r14, =02100388h
-  ldr r1, [r14]
+  ldr r3, =02100388h
+  ldr r1, [r3]
   ;orr r1, r1, 00000080h
   orr r1, r1, 00002000h
   orr r1, r1, 02000000h
-  str r1, [r14]
-  mov r14, r3
+  str r1, [r3]
   mov r1, 0h
-  b 02233284h ;0x0221aE34
+  b 02233284h
   .pool
 
 
