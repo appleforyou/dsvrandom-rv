@@ -869,7 +869,7 @@ require_relative '../rv/ooe_checker'
         newlines[2] = "\nI hear #{pickup_name}\\n\nis somewhere in the #{pickup_vague_area}!\\n\n"
         game.text_database.text_list[cat_to_use].decoded_string = newlines.join
         newlines = game.text_database.text_list[cat_to_use+1].decoded_string.split(/((?:\{[^}]+\})+)/)
-        newlines[2] = "\nI hear #{pickup_name}\\n\nis somewhere in the #{pickup_vague_area}!\\n\n"
+        newlines[2] = "\nMy friends said #{pickup_name}\\n\nis somewhere in #{location[:zone]}!\\n\n"
         game.text_database.text_list[cat_to_use+1].decoded_string = newlines.join
         #spoiler_log.puts game.text_database.text_list[0x674].decoded_string
         game.text_database.write_to_rom()
