@@ -1,0 +1,245 @@
+Enemies:
+00 Bat
+  If var A is 0, it's a single bat.
+    Var B:
+      0 Appears at the closest ceiling above where you place it.
+      1 Appears exactly where you place it.
+  If var A is greater than 0, it's a bat spawner.
+    Var A: Delay in frames between spawning each bat.
+    Var B: Usually 0. If greater than 0, ???. Somehow affects spawn rate.
+01 Zombie
+  Spawner.
+  Var A: Maximum number of Zombies this spawner can have in the room at once.
+  Var B: Maximum horizontal distance in pixels away from the spawner the Zombies can spawn.
+  If var B is 0, it uses the default values of var A being 4 and var B being 0x80.
+  If var A is 0, it's not a spawner, instead it's just a single Zombie.
+02 Skeleton
+  Var A: If bit 0x1 is set this Skeleton can jump back away from the player.
+03 Ghost
+  Spawner.
+  Var A: Maximum number of Ghosts this spawner can have in the room at once.
+04 Banshee
+05 Bone Scimitar
+06 Sea Stinger
+  Spawner.
+  Var A: Maximum number of Sea Stingers this spawner can have in the room at once.
+  If var A is 0 it's just a single Sea Stinger instead of a spawner.
+07 Nominon
+08 Axe Knight
+  Var B:
+    0 Normal.
+    1 Starts out in pieces, reforms when the player gets near.
+    2 Red colored.
+    3 Red colored, starts out in pieces.
+    4+ Glitchy animations, such as throwing axe knight corpses in place of axes.
+09 Une
+0A Merman
+  Var A:
+    0 Swims in the water when in water, otherwise walks on the ground.
+    1 Always walks on the ground, even in water.
+0B Necromancer
+0C Bone Archer
+  Var A: Speed for his arrow to fly at in pixels per frame.
+    If 0, will use the default value of 4 instead.
+    If greater than 8, will use 8.
+0D Spear Guard
+0E Invisible Man
+0F Gelso
+  Spawner.
+  Var A: Maximum number of Gelso this spawner can have in the room at once.
+  Var B: Delay in frames between spawning each Gelso.
+  If var A is 0, it's not a spawner, instead it's just a single Gelso.
+10 Needles
+  Var A: TODO
+11 Demon
+12 Fishhead
+  Var A: Number of them stacked on top of each other.
+13 Dark Octopus
+14 Killer Fish
+15 Forneus
+16 The Creature
+  Requires enemy overlay 38.
+17 Black Crow
+  Var A:
+    0 Will spawn exactly where you place it.
+    1+ Will spawn on the closest floor below where you place it.
+  Var B: The developers set this to 0 1 or 2, but it's not actually used by anything.
+18 Skull Spider
+  Var A: Movement speed (subpixels per frame).
+    If 0, defaults to 0xC00.
+    Note that Skull Spiders move at 3x this speed on hard mode.
+19 Scarecrow
+1A Sea Demon
+1B Winged Guard
+  Spawner.
+  Var A: Maximum number of Winged Guards this spawner can have in the room at once.
+  If var A is 0, it's not a spawner, instead it's just a single Winged Guard.
+1C Nightmare
+1D Rock Knight
+1E Fire Demon
+1F Bitterfly
+20 Specter
+21 Grave Digger
+22 Werebat
+23 Black Fomor
+24 Enkidu
+25 Bone Pillar
+  Var A: Number of them stacked on top of each other.
+26 Skeleton Frisky
+27 Skeleton Hero
+28 Dullahan
+29 Skeleton Rex
+2A White Dragon
+  Var A:
+    0 Attached to left wall.
+    1 Attached to right wall.
+2B Saint Elmo
+  Spawner.
+  Var A: Maximum number of Saint Elmos this spawner can have in the room at once.
+  Var B: Should be 78. If anything other than 78, this spawner will use a max of 4 Saint Elmos, ignoring var A.
+2C Lorelai
+2D Edimmu
+  Var A: Affects the z-index it appears on.
+    0 Equivalent to z-index 4.
+    1 Equivalent to z-index 11.
+2E Decarabia
+  Var A: 0 to 3
+  Var B:
+    0 Moves right.
+    1 Moves left.
+2F Merman
+30 Ladycat
+31 Ectoplasm
+32 Curse Diva
+33 Miss Murder
+34 Automaton ZX26
+35 Skeleton Beast
+36 Balloon
+37 Arachne
+38 Lizardman
+39 Armored Beast
+3A Yeti
+3B Thunder Demon
+3C Owl
+  Requires enemy overlay 38.
+3D Werewolf
+3E Altair
+  Spawner.
+  Var A:
+    0 Altairs will carry Flea Men.
+    1 Altairs will have no Flea Men, and instead swoop down to attack you.
+  Var B: An Altair will spawn every (var B/2) frames.
+    If 0, will use the default var B of 0xB4 instead.
+3F Mandragora
+40 Jersey Devil
+41 Owl Knight
+  Requires enemy overlay 38.
+42 Chosen Une
+43 Stone Rose
+44 Mad Butcher
+45 White Fomor
+46 Evil Force
+47 Flea Man
+  Var B: Should be 0. If not 0 the Flea Man will just be frozen and not move at all.
+48 Ghoul
+  Spawner.
+  Var A: Maximum number of Ghouls this spawner can have in the room at once.
+  Var B: Maximum horizontal distance in pixels away from the spawner the Ghouls can spawn.
+  If var B is 0, it uses the default values of var A being 4 and var B being 0x80.
+  If var A is 0, it's not a spawner, instead it's just a single Ghoul.
+49 Peeping Eye
+4A Gargoyle
+  Var A:
+    0 The Gargoyle wakes up when the player get close to it.
+    1 The Gargoyle is just a background decoration.
+4B Blood Skeleton
+4C Black Panther
+4D Mimic
+4E Draculina
+  Requires enemy overlay 38.
+4F Tin Man
+  Var A:
+    0 Normal, can't fall off ledges.
+    1 Can fall off ledges.
+      Warning: If Tin Man falls off a drop 4+ blocks tall, he will crash the game.
+      Only set var A to 1 if the only drops he can reach are 1-3 blocks tall.
+50 Polkir
+51 Nova Skeleton
+52 Gashida
+53 Devil
+54 Gurkha Master
+55 Red Smasher
+56 Cave Troll
+57 Blade Master
+58 Lilith
+59 Lizardman Blade
+5A Hammer Shaker
+5B Rebuild
+5C Imp
+5D Bugbear
+5E Spectral Sword
+  Requires enemy overlay 38.
+5F Automaton ZX27
+60 Medusa Head
+  Spawner.
+  Var A: Maximum number of Medusa Heads this spawner can have in the room at once.
+  Var B:
+    0 Spawns blue Medusa Heads.
+    1 Spawns yellow Medusa Heads that can petrify the player.
+  If var A is 0, it's not a spawner, instead it's just a single blue Medusa Head.
+61 Gorgon Head
+  Spawner.
+  Spawns Gorgon Heads at random intervals, with var A being the minimum number of frames between spawns, and (var A + var B) being the maximum number of frames.
+  If var B is 0, it uses the default values of var A being 0x168 and var B being 0x78.
+  If var A is 0, it's not a spawner, instead it's just a single blue Medusa Head (but it has the stats and drops of a Gorgon Head).
+62 Mad Snatcher
+63 Great Knight
+64 King Skeleton
+65 Winged Skeleton
+  Spawner.
+  Spawns Winged Skeletons at random intervals, with var A being the minimum number of frames between spawns, and (var A + var B) being the maximum number of frames.
+  If var B is 0, it uses the default values of var A being 0x168 and var B being 0x78.
+  If var A is 0, it's not a spawner, instead it's just a single Winged Guard (but it has the stats and drops of a Winged Skeleton).
+66 Final Knight
+  Requires enemy overlay 36.
+67 Jiang Shi
+  Requires enemy overlay 29.
+  Since Jiang Shi doesn't die, boss doors don't open themselves up when you defeat him. You need to add special object 24 with var A = 1 into the same room as Jiang Shi for the doors to open when he dies.
+68 Demon Lord
+69 Double Hammer
+6A Weapon Master
+6B Giant Skeleton
+  Var A:
+    0 Common enemy Giant Skeleton.
+    1 Boss Giant Skeleton. Disappears once the corresponding boss death flag is set. Also spawns the magnes points and chest containing the boss medal.
+  Var B:
+    0 Face towards the direction the player was in when they first entered the room.
+    1 Always face left.
+    2 Always face right.
+6C Arthroverta
+  Requires enemy overlay 24.
+6D Brachyura
+  Requires enemy overlay 30.
+6E Maneater
+  Requires enemy overlay 26.
+6F Rusalka
+  Requires enemy overlay 27.
+70 Goliath
+  Requires enemy overlay 32.
+71 Gravedorcus
+  Requires enemy overlay 33.
+72 Albus
+  Requires enemy overlay 36.
+73 Barlowe
+  Requires enemy overlay 37.
+74 Wallman
+  Requires enemy overlay 28.
+75 Blackmore
+  Requires enemy overlay 35.
+76 Eligor
+  Requires enemy overlay 31.
+77 Death
+  Requires enemy overlay 25.
+78 Dracula
+  Requires enemy overlay 34.
+  Dracula's palette is stored in sector overlay 75, the sector overlay for the Final Approach. If you place him in any other sector his palette will appear corrupted.
