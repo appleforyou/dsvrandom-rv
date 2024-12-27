@@ -202,6 +202,11 @@ class Ui_Randomizer
 
     @gridLayout.addWidget(@generate_backup_button, 5, 1, 1, 1)
 
+    @permission_label = Qt::Label.new(@tab)
+    @permission_label.objectName = "permission_label"
+
+    @gridLayout.addWidget(@permission_label, 6, 1, 1, 1)
+
     @lock_backup = Qt::CheckBox.new(@tab)
     @lock_backup.objectName = "lock_backup"
     @lock_backup.checked = false
@@ -789,6 +794,7 @@ class Ui_Randomizer
     @randomize_button.text = Qt::Application.translate("Randomizer", "Create Patch", nil, Qt::Application::UnicodeUTF8)
     @apply_patch_button.text = Qt::Application.translate("Randomizer", "Apply Patch", nil, Qt::Application::UnicodeUTF8)
     @unrandomize_button.text = Qt::Application.translate("Randomizer", "Unrandomize", nil, Qt::Application::UnicodeUTF8)
+    @permission_label.text = Qt::Application.translate("Randomizer", "Note: Windows can be picky about which folders you can write to. Take care there, or run this program in Administrator Mode.", nil, Qt::Application::UnicodeUTF8)
 
 
     @help_label.text = Qt::Application.translate("Randomizer", "Select a heading below to read detailed descriptions of the randomizer options. Click the About button to find out how to ask me other questions.", nil, Qt::Application::UnicodeUTF8)
