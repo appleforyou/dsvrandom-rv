@@ -96,6 +96,17 @@ class PickupRandomizer
     all_custos = ["Dextro Custos", "Sinestro Custos", "Arma Custos"]
     all_dominus = ["Dominus Hatred", "Dominus Anger", "Dominus Agony"]
     all_custos_dominus = all_custos + all_dominus
+    if @options[:rv_unlock_cerberus]
+      hints_to_use = all_dominus
+    else
+      hints_to_use = all_dominus + all_custos
+      nums = (1..6).to_a
+      weights = (1..6).flat_map {|w| Math.sqrt(w)}
+      weights = weights.map{|w| w.to_f / weights.reduce(:+)}
+      weighted_nums = nums.zip(weights).to_h
+      hint_numbers = weighted_nums.max_by(3){|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
+      hint_counter = 1
+    end
     all_progression_glyphs = checker.all_progression_pickups.select {|k, v| OoEItems.glyphs.has_key?(k)}
     all_non_progression_glyphs = OoEItems.glyphs.select {|k, v| not all_progression_glyphs.has_key?(k)}
     # To prevent the randomizer from filling too many spaces with useless items too often and making the seed uncompleteable, we reserve some slots for progression glyphs.
@@ -413,11 +424,15 @@ class PickupRandomizer
       end
       puts spoiler_str if verbose
 
-      hints_to_use = @options[:rv_unlock_cerberus] ? all_dominus : all_dominus + all_custos
       if hints_to_use.include?(pickup_name) and not cats.empty?
-        cats = cats.shuffle(random: rng)
-        cat_to_use = cats.pop()
-        game.tweaks.change_cat_hint(cat_to_use, pickup_name, location, transformation)
+        if (@options[:rv_unlock_cerberus]) or (not @options[:rv_unlock_cerberus] and hint_numbers.include?(hint_counter))
+          cats = cats.shuffle(random: rng)
+          cat_to_use = cats.pop()
+          game.tweaks.change_cat_hint(cat_to_use, pickup_name, location, transformation)
+        end
+        if not @options[:rv_unlock_cerberus]
+          hint_counter += 1
+        end
       end
 
       if /Drops/.match?(pickup_name)
