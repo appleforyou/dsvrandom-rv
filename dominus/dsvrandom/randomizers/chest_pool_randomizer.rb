@@ -82,7 +82,7 @@ class ItemPool
   def read_data
     @item_pool_pointer = @chest_list_ptr + 8*@internal_id
 
-    @item_ids = @dra03[@item_pool_pointer, 2, 8]
+    @item_ids = @dra03[@item_pool_pointer, 2, 4]
   end
 
   def []=(i, item_id)
