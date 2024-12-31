@@ -255,7 +255,6 @@ class RandomizerWindow < Qt::Dialog
     @ui.rv_open_castle.setEnabled(false)
     @ui.rv_randomize_quest_rewards.setEnabled(false)
     @ui.rv_non_vanilla_glyphs.setEnabled(false)
-    @ui.randomize_shop.setEnabled(false)
   end
 
   def difficulty_changed(diff_index)
@@ -328,12 +327,13 @@ class RandomizerWindow < Qt::Dialog
     end
   end
 
-  def copy_backup_files(game_folder, backup_folder)
+  def copy_backup_files_old(game_folder, backup_folder)
     options_completed = 0
-    ["dra03", "/windata/alldata"].each do |shortname|
+    #["dra03", "/windata/alldata"].each do |shortname|
+    ["dra03", "alldata"].each do |shortname|
       extension = shortname == "dra03" ? ".dll" : ".bin"
       filename = "#{game_folder}/#{shortname}#{extension}"
-      new_filename = "#{backup_folder}/#{shortname}_backup3#{extension}"
+      new_filename = "#{backup_folder}/#{shortname}_backup#{extension}"
       if not File.file?(filename)
         raise "You are missing at least one necessary game file from the selected Game Folder. Using Steam's Verify Integrity of Game Files feature can help with this."
       end
@@ -392,23 +392,38 @@ class RandomizerWindow < Qt::Dialog
 
   def copy_backup_files(game_folder, backup_folder, restore = false)
     options_completed = 0
-    ["dra03", "/windata/alldata"].each do |shortname|
+    ["dra03", "alldata"].each do |shortname|
       extension = shortname == "dra03" ? ".dll" : ".bin"
+      subfolder = shortname == "dra03" ? "" : "windata/"
       if restore
-        filename = "#{backup_folder}/#{shortname}_backup#{extension}"
-        new_filename = "#{game_folder}/#{shortname}#{extension}"
+        filename = "#{backup_folder}/#{subfolder}#{shortname}_backup#{extension}"
+        if (not File.file?(filename)) and shortname == "alldata"
+          filename = "#{backup_folder}/alldata_backup.bin"
+        end
+        new_filename = "#{game_folder}/#{subfolder}#{shortname}#{extension}"
       else
-        filename = "#{game_folder}/#{shortname}#{extension}"
-        new_filename = "#{backup_folder}/#{shortname}_backup#{extension}"
+        filename = "#{game_folder}/#{subfolder}#{shortname}#{extension}"
+        new_filename = "#{backup_folder}/#{subfolder}#{shortname}_backup#{extension}"
       end
       if not File.file?(filename)
-        if reverse
+        if restore
           raise "You are missing at least one backup file, so this tool cannot help you.\n\nUse Steam's Verify Integrity of Game Files feature to unrandomize your game."
         else
           raise "You are missing at least one necessary game file from the selected Game Folder. Using Steam's Verify Integrity of Game Files feature can help with this."
         end
       end
-      FileUtils.copy(filename, new_filename)
+      first_retry = true
+      begin
+        FileUtils.copy(filename, new_filename)
+      rescue StandardError => e
+        if shortname == "alldata" and first_retry and not restore
+          new_filename = "#{backup_folder}/alldata_backup.bin"
+          first_retry = false
+          retry
+        else
+          raise e
+        end
+      end
       options_completed += shortname == "dra03" ? 5 : 95
       yield options_completed
     end
@@ -495,6 +510,7 @@ class RandomizerWindow < Qt::Dialog
     max_val += 1 if options_hash[:randomize_wooden_chests]
     max_val += 2 if options_hash[:randomize_enemy_drops]
     max_val += 1 if options_hash[:randomize_bgm]
+    max_val += 1 if options_hash[:randomize_shop]
 
     @progress_dialog = ProgressDialog.new("Randomizing", "Initializing...", max_val)
     @progress_dialog.execute do
