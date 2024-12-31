@@ -12,7 +12,7 @@ def self.items
 end
 
 def self.glyphs
- glyphs = {
+ @glyphs ||= {
   "Confodere" => {
     name: "Confodere",
     type: "Damaging",
@@ -461,7 +461,7 @@ def self.glyphs
 end
 
 def self.equipment
- equipment = {
+ @equipment ||= {
   "Casual Clothes" => {
     name: "Casual Clothes",
     type: "Body",
@@ -475,6 +475,7 @@ def self.equipment
     progression: false,
     id: 0xe7,
     tier: 0,
+    price: 2000
   },
   "Rubber Suit" => {
     name: "Rubber Suit",
@@ -482,6 +483,7 @@ def self.equipment
     progression: false,
     id: 0xe8,
     tier: 0,
+    price: 2000
   },
   "Reinforced Suit" => {
     name: "Reinforced Suit",
@@ -489,6 +491,7 @@ def self.equipment
     progression: false,
     id: 0xe9,
     tier: 2,
+    price: 3000
   },
   "Body Suit" => {
     name: "Body Suit",
@@ -496,6 +499,7 @@ def self.equipment
     progression: false,
     id: 0xea,
     tier: 1,
+    price: 5000
   },
   "Leather Cuirass" => {
     name: "Leather Cuirass",
@@ -503,6 +507,7 @@ def self.equipment
     progression: false,
     id: 0xeb,
     tier: 0,
+    price: 800
   },
   "Copper Plate" => {
     name: "Copper Plate",
@@ -510,6 +515,7 @@ def self.equipment
     progression: false,
     id: 0xec,
     tier: 0,
+    price: 1500
   },
   "Iron Plate" => {
     name: "Iron Plate",
@@ -517,6 +523,7 @@ def self.equipment
     progression: false,
     id: 0xed,
     tier: 1,
+    price: 2800
   },
   "Silver Plate" => {
     name: "Silver Plate",
@@ -524,6 +531,7 @@ def self.equipment
     progression: false,
     id: 0xee,
     tier: 1,
+    price: 3800
   },
   "Gold Plate" => {
     name: "Gold Plate",
@@ -531,6 +539,7 @@ def self.equipment
     progression: false,
     id: 0xef,
     tier: 2,
+    price: 7800
   },
   "Platinum Plate" => {
     name: "Platinum Plate",
@@ -538,6 +547,7 @@ def self.equipment
     progression: false,
     id: 0xf0,
     tier: 2,
+    price: 20000
   },
   "Mirror Cuirass" => {
     name: "Mirror Cuirass",
@@ -545,6 +555,7 @@ def self.equipment
     progression: false,
     id: 0xf1,
     tier: 2,
+    price: 8000
   },
   "Heart Cuirass" => {
     name: "Heart Cuirass",
@@ -552,6 +563,7 @@ def self.equipment
     progression: false,
     id: 0xf2,
     tier: 1,
+    price: 12000
   },
   "Barbarian Belt" => {
     name: "Barbarian Belt",
@@ -559,6 +571,7 @@ def self.equipment
     progression: false,
     id: 0xf3,
     tier: 3,
+    price: 3000
   },
   "Knight Cuirass" => {
     name: "Knight Cuirass",
@@ -566,6 +579,7 @@ def self.equipment
     progression: false,
     id: 0xf4,
     tier: 2,
+    price: 8000
   },
   "Crimson Mail" => {
     name: "Crimson Mail",
@@ -573,6 +587,7 @@ def self.equipment
     progression: false,
     id: 0xf5,
     tier: 2,
+    price: 3000
   },
   "Valkyrie Mail" => {
     name: "Valkyrie Mail",
@@ -580,6 +595,7 @@ def self.equipment
     progression: false,
     id: 0xf6,
     tier: 3,
+    price: 6000
   },
   "Minerva Mail" => {
     name: "Minerva Mail",
@@ -587,6 +603,7 @@ def self.equipment
     progression: false,
     id: 0xf7,
     tier: 4,
+    price: 0
   },
   "Cotton Dress" => {
     name: "Cotton Dress",
@@ -594,6 +611,7 @@ def self.equipment
     progression: false,
     id: 0xf8,
     tier: 1,
+    price: 300
   },
   "Silk Dress" => {
     name: "Silk Dress",
@@ -601,6 +619,7 @@ def self.equipment
     progression: false,
     id: 0xf9,
     tier: 2,
+    price: 1000
   },
   "Sequined Dress" => {
     name: "Sequined Dress",
@@ -608,6 +627,7 @@ def self.equipment
     progression: false,
     id: 0xfa,
     tier: 2,
+    price: 2000
   },
   "Empire Dress" => {
     name: "Empire Dress",
@@ -615,6 +635,7 @@ def self.equipment
     progression: false,
     id: 0xfb,
     tier: 3,
+    price: 4000
   },
   "Corset Dress" => {
     name: "Corset Dress",
@@ -622,6 +643,7 @@ def self.equipment
     progression: false,
     id: 0xfc,
     tier: 3,
+    price: 6000
   },
   "Party Dress" => {
     name: "Party Dress",
@@ -629,6 +651,7 @@ def self.equipment
     progression: false,
     id: 0xfd,
     tier: 2,
+    price: 7000
   },
   "Wedding Dress" => {
     name: "Wedding Dress",
@@ -636,13 +659,15 @@ def self.equipment
     progression: false,
     id: 0xfe,
     tier: 3,
+    price: 12000
   },
   "Robe Decollete" => {
     name: "Robe Decollete",
     type: "Body",
     progression: false,
     id: 0xff,
-    tier: 3,
+    tier: 4,
+    price: 0
   },
   "Eye for Decay" => {
     name: "Eye for Decay",
@@ -650,6 +675,7 @@ def self.equipment
     progression: false,
     id: 0x101,
     tier: 0,
+    price: 50000
   },
   "L. Eye of God" => {
     name: "L. Eye of God",
@@ -671,6 +697,7 @@ def self.equipment
     progression: false,
     id: 0x104,
     tier: 0,
+    price: 200
   },
   "Garbo Hat" => {
     name: "Garbo Hat",
@@ -678,6 +705,7 @@ def self.equipment
     progression: false,
     id: 0x105,
     tier: 2,
+    price: 800
   },
   "Treasure Hat" => {
     name: "Treasure Hat",
@@ -699,6 +727,7 @@ def self.equipment
     progression: false,
     id: 0x108,
     tier: 2,
+    price: 4000
   },
   "Ribbon" => {
     name: "Ribbon",
@@ -706,6 +735,7 @@ def self.equipment
     progression: false,
     id: 0x109,
     tier: 1,
+    price: 777
   },
   "Cabriolet" => {
     name: "Cabriolet",
@@ -713,6 +743,7 @@ def self.equipment
     progression: false,
     id: 0x10a,
     tier: 2,
+    price: 200
   },
   "Babushka" => {
     name: "Babushka",
@@ -720,6 +751,7 @@ def self.equipment
     progression: false,
     id: 0x10b,
     tier: 1,
+    price: 500
   },
   "Caprine" => {
     name: "Caprine",
@@ -727,6 +759,7 @@ def self.equipment
     progression: false,
     id: 0x10c,
     tier: 1,
+    price: 1000
   },
   "Crochet" => {
     name: "Crochet",
@@ -734,6 +767,7 @@ def self.equipment
     progression: false,
     id: 0x10d,
     tier: 3,
+    price: 2400
   },
   "Barbarian Helm" => {
     name: "Barbarian Helm",
@@ -741,6 +775,7 @@ def self.equipment
     progression: false,
     id: 0x10e,
     tier: 3,
+    price: 1500
   },
   "Knight Helm" => {
     name: "Knight Helm",
@@ -748,6 +783,7 @@ def self.equipment
     progression: false,
     id: 0x10f,
     tier: 1,
+    price: 4000
   },
   "Crimson Mask" => {
     name: "Crimson Mask",
@@ -755,6 +791,7 @@ def self.equipment
     progression: false,
     id: 0x110,
     tier: 1,
+    price: 1500
   },
   "Valkyrie Mask" => {
     name: "Valkyrie Mask",
@@ -762,6 +799,7 @@ def self.equipment
     progression: false,
     id: 0x111,
     tier: 2,
+    price: 3000
   },
   "Minerva Mask" => {
     name: "Minerva Mask",
@@ -769,6 +807,7 @@ def self.equipment
     progression: false,
     id: 0x112,
     tier: 3,
+    price: 0
   },
   "Ruby Pins" => {
     name: "Ruby Pins",
@@ -776,6 +815,7 @@ def self.equipment
     progression: false,
     id: 0x113,
     tier: 2,
+    price: 5000
   },
   "Sapphire Pins" => {
     name: "Sapphire Pins",
@@ -783,6 +823,7 @@ def self.equipment
     progression: false,
     id: 0x114,
     tier: 2,
+    price: 5000
   },
   "Emerald Pins" => {
     name: "Emerald Pins",
@@ -790,6 +831,7 @@ def self.equipment
     progression: false,
     id: 0x115,
     tier: 2,
+    price: 5000
   },
   "Diamond Pins" => {
     name: "Diamond Pins",
@@ -797,6 +839,7 @@ def self.equipment
     progression: false,
     id: 0x116,
     tier: 3,
+    price: 5000
   },
   "Onyx Pins" => {
     name: "Onyx Pins",
@@ -804,6 +847,7 @@ def self.equipment
     progression: false,
     id: 0x117,
     tier: 3,
+    price: 5000
   },
   "Stephanie" => {
     name: "Stephanie",
@@ -811,6 +855,7 @@ def self.equipment
     progression: false,
     id: 0x118,
     tier: 4,
+    price: 10000
   },
   "Royal Crown" => {
     name: "Royal Crown",
@@ -818,6 +863,7 @@ def self.equipment
     progression: false,
     id: 0x119,
     tier: 4,
+    price: 30000
   },
   "Sword Helm" => {
     name: "Sword Helm",
@@ -825,6 +871,7 @@ def self.equipment
     progression: false,
     id: 0x11a,
     tier: 1,
+    price: 10000
   },
   "Rapier Helm" => {
     name: "Rapier Helm",
@@ -832,6 +879,7 @@ def self.equipment
     progression: false,
     id: 0x11b,
     tier: 0,
+    price: 10000
   },
   "Lance Helm" => {
     name: "Lance Helm",
@@ -839,6 +887,7 @@ def self.equipment
     progression: false,
     id: 0x11c,
     tier: 1,
+    price: 10000
   },
   "Hammer Helm" => {
     name: "Hammer Helm",
@@ -846,6 +895,7 @@ def self.equipment
     progression: false,
     id: 0x11d,
     tier: 1,
+    price: 10000
   },
   "Arrow Helm" => {
     name: "Arrow Helm",
@@ -853,6 +903,7 @@ def self.equipment
     progression: false,
     id: 0x11e,
     tier: 1,
+    price: 10000
   },
   "Axe Helm" => {
     name: "Axe Helm",
@@ -860,6 +911,7 @@ def self.equipment
     progression: false,
     id: 0x11f,
     tier: 1,
+    price: 10000
   },
   "Sickle Helm" => {
     name: "Sickle Helm",
@@ -867,6 +919,7 @@ def self.equipment
     progression: false,
     id: 0x120,
     tier: 1,
+    price: 10000
   },
   "Knife Helm" => {
     name: "Knife Helm",
@@ -874,6 +927,7 @@ def self.equipment
     progression: false,
     id: 0x121,
     tier: 0,
+    price: 10000
   },
   "Shield Helm" => {
     name: "Shield Helm",
@@ -881,6 +935,7 @@ def self.equipment
     progression: false,
     id: 0x122,
     tier: 1,
+    price: 10000
   },
   "Queen of Hearts" => {
     name: "Queen of Hearts",
@@ -888,6 +943,7 @@ def self.equipment
     progression: false,
     id: 0x123,
     tier: 5,
+    price: 10000
   },
   "Moonwalkers" => {
     name: "Moonwalkers",
@@ -915,378 +971,432 @@ def self.equipment
     type: "Boots",
     id: 0x128,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 10000
   },
   "Sandals" => {
     name: "Sandals",
     type: "Boots",
     id: 0x129,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 200
   },
   "Sabrina Shoes" => {
     name: "Sabrina Shoes",
     type: "Boots",
     id: 0x12a,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 500
   },
   "Cossack Boots" => {
     name: "Cossack Boots",
     type: "Boots",
     id: 0x12b,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 900
   },
   "Baggy Boots" => {
     name: "Baggy Boots",
     type: "Boots",
     id: 0x12c,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 1600
   },
   "Battle Boots" => {
     name: "Battle Boots",
     type: "Boots",
     id: 0x12d,
     progression: false,
-    tier: 2
+    tier: 2,
+    price: 2500
   },
   "Ghillie Boots" => {
     name: "Ghillie Boots",
     type: "Boots",
     id: 0x12e,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 3000
   },
   "Cavalier Boots" => {
     name: "Cavalier Boots",
     type: "Boots",
     id: 0x12f,
     progression: false,
-    tier: 1
+    tier: 1,
+    price: 4600
   },
   "Iron Leggings" => {
     name: "Iron Leggings",
     type: "Boots",
     id: 0x130,
     progression: false,
-    tier: 0
+    tier: 0,
+    price: 1000
   },
   "Silver Leggings" => {
     name: "Silver Leggings",
     type: "Boots",
     id: 0x131,
     progression: false,
-    tier: 1
+    tier: 1,
+    price: 1500
   },
   "Gold Leggings" => {
     name: "Gold Leggings",
     type: "Boots",
     id: 0x132,
     progression: false,
-    tier: 2
+    tier: 2,
+    price: 4000
   },
   "Plat Leggings" => {
     name: "Plat Leggings",
     type: "Boots",
     id: 0x133,
     progression: false,
-    tier: 2
+    tier: 2,
+    price: 8000
   },
   "Barbarian Shoes" => {
     name: "Barbarian Shoes",
     type: "Boots",
     id: 0x134,
     progression: false,
-    tier: 3
+    tier: 3,
+    price: 1500
   },
   "Knight Leggings" => {
     name: "Knight Leggings",
     type: "Boots",
     id: 0x135,
     progression: false,
-    tier: 2
+    tier: 2,
+    price: 5000
   },
   "Crimson Greaves" => {
     name: "Crimson Greaves",
     type: "Boots",
     id: 0x136,
     progression: false,
-    tier: 2
+    tier: 2,
+    price: 2000
   },
   "Valkyrie Greaves" => {
     name: "Valkyrie Greaves",
     type: "Boots",
     id: 0x137,
     progression: false,
-    tier: 3
+    tier: 3,
+    price: 4000
   },
   "Minerva Greaves" => {
     name: "Minerva Greaves",
     type: "Boots",
     id: 0x138,
     progression: false,
-    tier: 4
+    tier: 4,
+    price: 0
   },
   "Protect Ring" => {
     name: "Protect Ring",
     type: "Ring",
     progression: false,
     id: 0x13a,
-    tier: 1
+    tier: 1,
+    price: 3000
   },
   "Resist Ring" => {
     name: "Resist Ring",
     type: "Ring",
     progression: false,
     id: 0x13b,
-    tier: 0
+    tier: 0,
+    price: 3000
   },
   "Fool Ring" => {
     name: "Fool Ring",
     type: "Ring",
     progression: false,
     id: 0x13c,
-    tier: 0
+    tier: 0,
+    price: 21000
   },
   "Magician Ring" => {
     name: "Magician Ring",
     type: "Ring",
     progression: false,
     id: 0x13d,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Priestess Ring" => {
     name: "Priestess Ring",
     type: "Ring",
     progression: false,
     id: 0x13e,
-    tier: 1
+    tier: 1,
+    price: 21000
   },
   "Empress Ring" => {
     name: "Empress Ring",
     type: "Ring",
     progression: false,
     id: 0x13f,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Emperor Ring" => {
     name: "Emperor Ring",
     type: "Ring",
     progression: false,
     id: 0x140,
-    tier: 1
+    tier: 1,
+    price: 21000
   },
   "Hierophant Ring" => {
     name: "Hierophant Ring",
     type: "Ring",
     progression: false,
     id: 0x141,
-    tier: 1
+    tier: 1,
+    price: 21000
   },
   "Lovers Ring" => {
     name: "Lovers Ring",
     type: "Ring",
     progression: false,
     id: 0x142,
-    tier: 1
+    tier: 1,
+    price: 21000
   },
   "Chariot Ring" => {
     name: "Chariot Ring",
     type: "Ring",
     progression: false,
     id: 0x143,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Justice Ring" => {
     name: "Justice Ring",
     type: "Ring",
     progression: false,
     id: 0x144,
-    tier: 0
+    tier: 0,
+    price: 21000
   },
   "Hermit Ring" => {
     name: "Hermit Ring",
     type: "Ring",
     progression: false,
     id: 0x145,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Fortune Ring" => {
     name: "Fortune Ring",
     type: "Ring",
     progression: false,
     id: 0x146,
-    tier: 0
+    tier: 0,
+    price: 21000
   },
   "Strength Ring" => {
     name: "Strength Ring",
     type: "Ring",
     progression: false,
     id: 0x147,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Hanged Man Ring" => {
     name: "Hanged Man Ring",
     type: "Ring",
     progression: false,
     id: 0x148,
-    tier: 2
+    tier: 2,
+    price: 21000
   },
   "Death Ring" => {
     name: "Death Ring",
     type: "Ring",
     progression: false,
     id: 0x149,
-    tier: 5
+    tier: 5,
+    price: 21000
   },
   "Temperance Ring" => {
     name: "Temperance Ring",
     type: "Ring",
     progression: false,
     id: 0x14A,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Devil Ring" => {
     name: "Devil Ring",
     type: "Ring",
     progression: false,
     id: 0x14B,
-    tier: 0
+    tier: 0,
+    price: 21000
   },
   "Tower Ring" => {
     name: "Tower Ring",
     type: "Ring",
     progression: false,
     id: 0x14c,
-    tier: 2
+    tier: 2,
+    price: 21000
   },
   "Star Ring" => {
     name: "Star Ring",
     type: "Ring",
     progression: false,
     id: 0x14d,
-    tier: 3
+    tier: 3,
+    price: 21000
   },
   "Moon Ring" => {
     name: "Moon Ring",
     type: "Ring",
     progression: false,
     id: 0x14e,
-    tier: 4
+    tier: 4,
+    price: 21000
   },
   "Sun Ring" => {
     name: "Sun Ring",
     type: "Ring",
     progression: false,
     id: 0x14f,
-    tier: 4
+    tier: 4,
+    price: 21000
   },
   "Judgement Ring" => {
     name: "Judgement Ring",
     type: "Ring",
     progression: false,
     id: 0x150,
-    tier: 5
+    tier: 5,
+    price: 21000
   },
   "World Ring" => {
     name: "World Ring",
     type: "Ring",
     progression: false,
     id: 0x151,
-    tier: 4
+    tier: 4,
+    price: 21000
   },
   "Archer Ring" => {
     name: "Archer Ring",
     type: "Ring",
     progression: false,
     id: 0x152,
-    tier: 1
+    tier: 1,
+    price: 21000
   },
   "Blow Ring" => {
     name: "Blow Ring",
     type: "Ring",
     progression: false,
     id: 0x153,
-    tier: 3
+    tier: 3,
+    price: 8000
   },
   "Wind Ring" => {
     name: "Wind Ring",
     type: "Ring",
     progression: false,
     id: 0x154,
-    tier: 3
+    tier: 3,
+    price: 8000
   },
   "Ruby Ring" => {
     name: "Ruby Ring",
     type: "Ring",
     progression: false,
     id: 0x155,
-    tier: 2
+    tier: 2,
+    price: 8000
   },
   "Sapphire Ring" => {
     name: "Sapphire Ring",
     type: "Ring",
     progression: false,
     id: 0x156,
-    tier: 1
+    tier: 1,
+    price: 8000
   },
   "Emerald Ring" => {
     name: "Emerald Ring",
     type: "Ring",
     progression: false,
     id: 0x157,
-    tier: 1
+    tier: 1,
+    price: 8000
   },
   "Diamond Ring" => {
     name: "Diamond Ring",
     type: "Ring",
     progression: false,
     id: 0x158,
-    tier: 2
+    tier: 2,
+    price: 8000
   },
   "Onyx Ring" => {
     name: "Onyx Ring",
     type: "Ring",
     progression: false,
     id: 0x159,
-    tier: 1
+    tier: 1,
+    price: 8000
   },
   "Heart Earrings" => {
     name: "Heart Earrings",
     type: "Ring",
     progression: false,
     id: 0x15a,
-    tier: 1
+    tier: 1,
+    price: 1000
   },
   "Gold Ring" => {
     name: "Gold Ring",
     type: "Ring",
     progression: false,
     id: 0x15b,
-    tier: 0
+    tier: 0,
+    price: 10000
   },
   "Miser Ring" => {
     name: "Miser Ring",
     type: "Ring",
     progression: false,
     id: 0x15c,
-    tier: 0
+    tier: 0,
+    price: 30000
   },
   "Lucky Clover" => {
     name: "Lucky Clover",
     type: "Ring",
     progression: false,
     id: 0x15d,
-    tier: 1
+    tier: 1,
+    price: 777
   },
   "Thief Ring" => {
     name: "Thief Ring",
     type: "Ring",
     progression: false,
     id: 0x15e,
-    tier: 2
+    tier: 2,
+    price: 30000
   },
   "Master Ring" => {
     name: "Master Ring",
@@ -1299,221 +1409,312 @@ def self.equipment
 end
 
 def self.consumables
- consumables = {
+ @consumables ||= {
   "Potion" => {
     name: "Potion",
     type: "Health",
-    id: 0x75
+    id: 0x75,
+    price: 500
   },
   "High Potion" => {
     name: "High Potion",
     type: "Health",
-    id: 0x76
+    id: 0x76,
+    price: 2000
   },
   "Super Potion" => {
     name: "Super Potion",
     type: "Health",
-    id: 0x77
+    id: 0x77,
+    price: 30000
   },
   "Tonic" => {
     name: "Tonic",
     type: "Mana",
-    id: 0x78
+    id: 0x78,
+    price: 300
   },
   "High Tonic" => {
     name: "High Tonic",
     type: "Mana",
-    id: 0x79
+    id: 0x79,
+    price: 800
   },
   "Super Tonic" => {
     name: "Super Tonic",
     type: "Mana",
-    id: 0x7a
+    id: 0x7a,
+    price: 2000
   },
   "Heart Repair" => {
     name: "Tonic",
     type: "Hearts",
-    id: 0x7b
+    id: 0x7b,
+    price: 3000
   },
   "Uncurse Potion" => {
     name: "Uncurse Potion",
     type: "Other",
-    id: 0x7e
+    id: 0x7e,
+    price: 100
   },
   "Meat" => {
     name: "Meat",
     type: "Health",
-    id: 0x82
+    id: 0x82,
+    price: 290
   },
   "Tasty Meat" => {
     name: "Tasty Meat",
     type: "Health",
-    id: 0x83
+    id: 0x83,
+    price: 2900
   },
   "Thick Steak" => {
     name: "Thick Steak",
     type: "Health",
-    id: 0x84
+    id: 0x84,
+    price: 5000
   },
   "Raw Killer Fish" => {
     name: "Raw Killer Fish",
     type: "Health",
-    id: 0x85
+    id: 0x85,
+    price: 1000
   },
   "Rice Ball" => {
     name: "Rice Ball",
     type: "Health",
-    id: 0x86
+    id: 0x86,
+    price: 130,
   },
   "Corn Soup" => {
     name: "Tasty Meat",
     type: "Health",
-    id: 0x88
+    id: 0x88,
+    price: 150
   },
   "Minestrone" => {
     name: "Minestrone",
     type: "Health",
-    id: 0x89
+    id: 0x89,
+    price: 600
   },
   "Curry" => {
     name: "Curry",
     type: "Health",
-    id: 0x8a
+    id: 0x8a,
+    price: 1380
   },
   "Ramen Noodles" => {
     name: "Ramen Noodles",
     type: "Health",
-    id: 0x8b
+    id: 0x8b,
+    price: 800
   },
   "Cream Puff" => {
     name: "Cream Puff",
     type: "Health",
-    id: 0x8c
+    id: 0x8c,
+    price: 120
   },
   "Pudding" => {
     name: "Pudding",
     type: "Health",
-    id: 0x8d
+    id: 0x8d,
+    price: 150
   },
   "Mocha Eclair" => {
     name: "Mocha Eclair",
     type: "Health",
-    id: 0x8e
+    id: 0x8e,
+    price: 200
   },
   "Tart Tatin" => {
     name: "Tart Tatin",
     type: "Health",
-    id: 0x8f
+    id: 0x8f,
+    price: 500
   },
   "Choco Souffle" => {
     name: "Choco Souffle",
     type: "Health",
-    id: 0x90
+    id: 0x90,
+    price: 800
   },
   "Crepes Suzette" => {
-    name: "Curry",
+    name: "Crepes Suzette",
     type: "Health",
-    id: 0x91
+    id: 0x91,
+    price: 1000
   },
   "Croque Monsieur" => {
     name: "Croque Monsieur",
     type: "Health",
-    id: 0x92
+    id: 0x92,
+    price: 980
   },
   "Killer Fish BBQ" => {
     name: "Killer Fish BBQ",
     type: "Health",
-    id: 0x95
+    id: 0x95,
+    price: 1880
   },
   "Mint Sundae" => {
     name: "Mint Sundae",
     type: "Hearts",
-    id: 0x97
+    id: 0x97,
+    price: 400
   },
   "Milk" => {
     name: "Milk",
     type: "Hearts",
-    id: 0x98
+    id: 0x98,
+    price: 148
   },
   "Coffee" => {
     name: "Coffee",
     type: "Hearts",
-    id: 0x99
+    id: 0x99,
+    price: 230
   },
   "Earl Grey" => {
     name: "Earl Grey",
     type: "Hearts",
-    id: 0x9a
+    id: 0x9a,
+    price: 200
   },
   "Darjeeling Tea" => {
     name: "Darjeeling Tea",
     type: "Hearts",
-    id: 0x9b
+    id: 0x9b,
+    price: 200
   },
   "Eisbein" => {
     name: "Eisbein",
     type: "Health",
-    id: 0x94
+    id: 0x94,
+    price: 1680
   },
   "Magical Ticket" => {
     name: "Magical Ticket",
     type: "Other",
-    id: 0x7C
+    id: 0x7C,
+    price: 100
   },
   "Anti-Venom" => {
     name: "Anti-Venom",
     type: "Other",
-    id: 0x7D
+    id: 0x7D,
+    price: 100
   },
   "Mushroom" => {
     name: "Mushroom",
     type: "Health",
-    id: 0x87
+    id: 0x87,
+    price: 190
   },
   "Amanita" => {
     name: "Amanita",
     type: "Other",
-    id: 0xa1
+    id: 0xa1,
+    price: 1
   },
   "Rotten Meat" => {
     name: "Rotten Meat",
     type: "Other",
-    id: 0xa2
+    id: 0xa2,
+    price: 1
   },
   "Spoiled Milk" => {
     name: "Spoiled Milk",
     type: "Other",
-    id: 0xa3
+    id: 0xa3,
+    price: 1
   },
   "Schnitzel" => {
     name: "Schnitzel",
     type: "Health",
-    id: 0x93
+    id: 0x93,
+    price: 1180
   },
   "White Drops" => {
     name: "White Drops",
     type: "Drops",
-    id: 0x9F
+    id: 0x9F,
+    price: 0
   },
   "Black Drops" => {
     name: "Black Drops",
     type: "Drops",
-    id: 0xA0
+    id: 0xA0,
+    price: 0
   },
   "Green Drops" => {
     name: "Green Drops",
     type: "Drops",
-    id: 0x9E
+    id: 0x9E,
+    price: 0
   },
   "Blue Drops" => {
     name: "Blue Drops",
     type: "Drops",
-    id: 0x9D
+    id: 0x9D,
+    price: 0
   },
   "Red Drops" => {
     name: "Red Drops",
     type: "Drops",
-    id: 0x9C
+    id: 0x9C,
+    price: 0
+  },
+  "Record 1" => {
+    name: "Record 1",
+    type: "Bonus",
+    id: 0xa4,
+    price: 3000
+  },
+  "Record 2" => {
+    name: "Record 2",
+    type: "Bonus",
+    id: 0xa5,
+    price: 3000
+  },
+  "Record 3" => {
+    name: "Record 3",
+    type: "Bonus",
+    id: 0xa6,
+    price: 3000
+  },
+  "Record 4" => {
+    name: "Record 4",
+    type: "Bonus",
+    id: 0xa7,
+    price: 3000
+  },
+  "Record 5" => {
+    name: "Record 5",
+    type: "Bonus",
+    id: 0xa8,
+    price: 3000
+  },
+  "Record 6" => {
+    name: "Record 6",
+    type: "Bonus",
+    id: 0xa9,
+    price: 3000
+  },
+  "Record 7" => {
+    name: "Record 7",
+    type: "Bonus",
+    id: 0xaa,
+    price: 3000
+  },
+  "Record 8" => {
+    name: "Record 8",
+    type: "Bonus",
+    id: 0xab,
+    price: 3000
   }
 }
 end
@@ -1560,7 +1761,7 @@ def self.relics
 end
 
 def self.materials
-  materials = {
+  @materials ||= {
   "Mouse" => {
     name: "Mouse",
     type: "Quest",
@@ -1594,17 +1795,20 @@ def self.materials
   "\"Frontier\" Issue 1" => {
     name: "\"Frontier\" Issue 1",
     type: "Quest",
-    id: 0xb3
+    id: 0xb3,
+    price: 190
   },
   "\"Frontier\" Issue 2" => {
     name: "\"Frontier\" Issue 2",
     type: "Quest",
-    id: 0xb4
+    id: 0xb4,
+    price: 230
   },
   "\"Frontier\" Final" => {
     name: "\"Frontier\" Final",
     type: "Quest",
-    id: 0xb5
+    id: 0xb5,
+    price: 230
   },
   "Sketchbook" => {
     name: "Sketchbook",
@@ -1629,127 +1833,152 @@ def self.materials
   "Horse Hair" => {
     name: "Horse Hair",
     type: "Quest",
-    id: 0xba
+    id: 0xba,
+    price: 500
   },
   "Eagle Feather" => {
     name: "Eagle Feather",
     type: "Quest",
-    id: 0xbb
+    id: 0xbb,
+    price: 400
   },
   "Black Ink" => {
     name: "Black Ink",
     type: "Quest",
-    id: 0xbc
+    id: 0xbc,
+    price: 600
   },
   "Cotton Thread" => {
     name: "Cotton Thread",
     type: "Quest",
-    id: 0xbd
+    id: 0xbd,
+    price: 400
   },
   "Silk Thread" => {
     name: "Silk Thread",
     type: "Quest",
-    id: 0xbe
+    id: 0xbe,
+    price: 800
   },
   "Cashmere Thread" => {
     name: "Cashmere Thread",
     type: "Quest",
-    id: 0xbf
+    id: 0xbf,
+    price: 1600
   },
   "Salt" => {
     name: "Salt",
     type: "Quest",
-    id: 0x96
+    id: 0x96,
+    price: 100
   },
   "Sage" => {
     name: "Sage",
     type: "Quest",
-    id: 0xc0
+    id: 0xc0,
+    price: 100
   },
   "Chamomile" => {
     name: "Chamomile",
     type: "Quest",
-    id: 0xc1
+    id: 0xc1,
+    price: 300
   },
   "Rue" => {
     name: "Rue",
     type: "Quest",
-    id: 0xc2
+    id: 0xc2,
+    price: 500
   },
   "Mandrake Root" => {
     name: "Mandrake Root",
     type: "Quest",
-    id: 0xc3
+    id: 0xc3,
+    price: 3000
   },
   "Merman Meat" => {
     name: "Merman Meat",
     type: "Quest",
-    id: 0xc4
+    id: 0xc4,
+    price: 5000
   },
   "Zircon" => {
     name: "Zircon",
     type: "Quest",
-    id: 0xc5
+    id: 0xc5,
+    price: 300
   },
   "Lapis Lazuli" => {
     name: "Lapis Lazuli",
     type: "Quest",
-    id: 0xc6
+    id: 0xc6,
+    price: 700
   },
   "Chrysoberyl" => {
     name: "Chrysoberyl",
     type: "Quest",
-    id: 0xc7
+    id: 0xc7,
+    price: 1500
   },
   "Ruby" => {
     name: "Ruby",
     type: "Quest",
-    id: 0xc8
+    id: 0xc8,
+    price: 2000
   },
   "Sapphire" => {
     name: "Sapphire",
     type: "Quest",
-    id: 0xc9
+    id: 0xc9,
+    price: 2000
   },
   "Emerald" => {
     name: "Emerald",
     type: "Quest",
-    id: 0xca
+    id: 0xca,
+    price: 2000
   },
   "Onyx" => {
     name: "Onyx",
     type: "Quest",
-    id: 0xcb
+    id: 0xcb,
+    price: 4000
   },
   "Diamond" => {
     name: "Diamond",
     type: "Quest",
-    id: 0xcc
+    id: 0xcc,
+    price: 5000
   },
   "Alexandrite" => {
     name: "Alexandrite",
     type: "Quest",
-    id: 0xcd
+    id: 0xcd,
+    price: 30000
   },
   "Copper Ore" => {
     name: "Copper Ore",
     type: "Quest",
-    id: 0xce
+    id: 0xce,
+    price: 300
   },
   "Iron Ore" => {
     name: "Iron Ore",
     type: "Quest",
-    id: 0xcf
+    id: 0xcf,
+    price: 800
   },
   "Silver Ore" => {
     name: "Silver Ore",
     type: "Quest",
-    id: 0xd0
+    id: 0xd0,
+    price: 1200
   },
   "Gold Ore" => {
     name: "Gold Ore",
     type: "Quest",
-    id: 0xd1
+    id: 0xd1,
+    price: 2400
   },
   "VIP Card" => {
     name: "VIP Card",
@@ -1776,46 +2005,6 @@ def self.materials
     type: "Quest",
     id: 0xd6
   },
-  "Record 1" => {
-    name: "Record 1",
-    type: "Bonus",
-    id: 0xa4
-  },
-  "Record 2" => {
-    name: "Record 2",
-    type: "Bonus",
-    id: 0xa5
-  },
-  "Record 3" => {
-    name: "Record 3",
-    type: "Bonus",
-    id: 0xa6
-  },
-  "Record 4" => {
-    name: "Record 4",
-    type: "Bonus",
-    id: 0xa7
-  },
-  "Record 5" => {
-    name: "Record 5",
-    type: "Bonus",
-    id: 0xa8
-  },
-  "Record 6" => {
-    name: "Record 6",
-    type: "Bonus",
-    id: 0xa9
-  },
-  "Record 7" => {
-    name: "Record 7",
-    type: "Bonus",
-    id: 0xaa
-  },
-  "Record 8" => {
-    name: "Record 8",
-    type: "Bonus",
-    id: 0xab
-  }
   }
 end
 
@@ -1826,6 +2015,10 @@ end
 def self.extra_item(k, v)
   @@total_items[k] = v
   @@undroppables[k] = v
+end
+
+def self.shoppables
+  @shoppables ||= consumables.merge(materials).merge(equipment).delete_if {|k, v| not v.has_key?(:price)}
 end
 
 @@total_items = self.glyphs.merge(equipment).merge(relics).merge(consumables).merge(materials)
