@@ -91,6 +91,7 @@ class PickupRandomizer
     temp_bans = []
 
     transformation = ["Arma Felix", "Arma Chiroptera", "Arma Machina"].sample(random: rng)
+    @game.tweaks.set_chosen_transformation(transformation)
     @checker.all_progression_pickups[transformation] = OoEItems.glyphs[transformation]
     cats = ["SoybeanFlour", "Tofu", "Ink"]
     all_custos = ["Dextro Custos", "Sinestro Custos", "Arma Custos"]
