@@ -386,7 +386,7 @@ require 'set'
     return get_unplaced_non_progression_pickup_for_enemy_drop(enemy_id, valid_ids: valid_ids)
   end
 
-  def get_unplaced_non_progression_pickup_for_wooden_chest(pool_id, valid_ids: (0..0x161).to_a)
+  def get_unplaced_non_progression_pickup_for_wooden_chest(valid_ids: (0x6F..0x161).to_a) #wooden chests won't have glyphs
     valid_possible_items = @unplaced_droppable_pickups.select do |name, item|
       valid_ids.include?(item[:id])
     end
@@ -410,12 +410,10 @@ require 'set'
     weights = valid_possible_items.map do |key, item|
       #Weight less useful pickups as more likely to be chosen by pools with a lower ID.
       weight = 1.0
-      pool_scale = pool_id.to_f / (0xb*2).to_f
-      if OoEItems.equipment.has_key?(key)
-        item_tier = OoEItems.equipment[key][:tier].to_f
-        item_tier = (1.0-pool_scale)*item_tier
-        weight /= item_tier+1.0
-        weight *= (pool_scale + 0.5)**3 #Make equipment be more likely to be chosen by rare pools, and less likely for common pools
+      if not OoEItems.equipment.has_key?(key)
+        weight *= 10.0 #Make equipment less likely to appear in wooden chests. More weighting will happen in the wooden chest randomizer itself.
+      else
+        weight *= (5 - OoEItems.equipment[key][:tier])*0.25 + 1
       end
       weight = Math.sqrt(weight)
       if @preferences.has_key?(key)
@@ -430,12 +428,12 @@ require 'set'
 
     @unplaced_droppable_pickups.delete(pickup_name)
 
-    return OoEItems.items[pickup_name][:id]
+    return [OoEItems.items[pickup_name][:id], OoEItems.items[pickup_name][:tier]]
   end
 
-  def get_unplaced_non_progression_item_except_relics_for_wooden_chest(pool_id)
+  def get_unplaced_non_progression_item_except_relics_for_wooden_chest()
     valid_ids = (0x6F..0x161).to_a
     valid_ids -= (0x6F..0x74).to_a
-    return get_unplaced_non_progression_pickup_for_wooden_chest(pool_id, valid_ids: valid_ids)
+    return get_unplaced_non_progression_pickup_for_wooden_chest(valid_ids: valid_ids)
   end
 end
