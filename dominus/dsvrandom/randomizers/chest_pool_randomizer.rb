@@ -49,15 +49,34 @@ class ChestPoolRandomizer
     available_common_wooden_chest_item_ids.shuffle!(random: rng)
     available_rare_wooden_chest_item_ids.shuffle!(random: rng)
 
-    @wooden_chest_item_pools.each do |pool|
+    item_tiers = {}
+    ((@wooden_chest_item_pools.size-1)*4).times do |i|
+      item_id, tier = @game.checker.get_unplaced_non_progression_item_except_relics_for_wooden_chest()
+      item_tiers[item_id] = tier
+    end
+
+    #item_tier = OoEItems.equipment[key][:tier].to_f
+    #item_tier = (1.0-pool_scale)*item_tier
+    weights = item_tiers.keys.map do |item_id|
+      #Weight higher-tiered equipment to be more likely to be chosen by green chests, and moreso for later-game chests
+      weight = 1.0
+      if not item_tiers[item_id].nil? #nil means not equipment. We want to weight equipment higher.
+        weight *= 6
+        weight *= item_tiers[item_id]*10 + 1
+      end
+      weight = Math.sqrt(weight)
+      weight
+    end
+
+    ps = weights.map{|w| w.to_f / weights.reduce(:+)}
+    weighted_items = item_tiers.keys.zip(ps).to_h
+    ordered_items = weighted_items.sort_by{|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
+
+    @wooden_chest_item_pools.reverse_each do |pool|
       next if pool.pool_id == 0x15 # Skip rare pool A, which is never used
 
       (0..3).each do |i|
-        if pool.pool_id <= 0xA
-          pool[i] = @game.checker.get_unplaced_non_progression_item_except_relics_for_wooden_chest(pool.pool_id) + 1 #available_common_wooden_chest_item_ids.pop() + 1
-        else
-          pool[i] = @game.checker.get_unplaced_non_progression_item_except_relics_for_wooden_chest(pool.pool_id) + 1 #available_rare_wooden_chest_item_ids.pop() + 1
-        end
+        pool[i] = ordered_items.pop() + 1
       end
     end
   end
