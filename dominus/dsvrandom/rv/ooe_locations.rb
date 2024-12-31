@@ -14,7 +14,7 @@ require_relative 'ooe_logic'
   end
 
   def self.locs
-    locs = [
+    @locs ||= [
     #Dracula's Castle
     #Castle Entrance
       {
