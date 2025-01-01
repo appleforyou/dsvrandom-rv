@@ -35,9 +35,16 @@ class Game
       dra03_stages = stages
       yield (dra03_stages + alldata_stages)
     end
-    @alldata = GameFile.new(self, @backup_folder + "/windata/alldata_backup.bin", @game_folder + "/windata/alldata.bin", @patch_folder, alldata_md5, options, mode) do |stages|
-      alldata_stages = stages
-      yield (dra03_stages + alldata_stages)
+    if File.file?("windata/alldata_backup.bin")
+      @alldata = GameFile.new(self, @backup_folder + "/windata/alldata_backup.bin", @game_folder + "/windata/alldata.bin", @patch_folder, alldata_md5, options, mode) do |stages|
+        alldata_stages = stages
+        yield (dra03_stages + alldata_stages)
+      end
+    else
+      @alldata = GameFile.new(self, @backup_folder + "/alldata_backup.bin", @game_folder + "/windata/alldata.bin", @patch_folder, alldata_md5, options, mode) do |stages|
+        alldata_stages = stages
+        yield (dra03_stages + alldata_stages)
+      end
     end
     #File.binwrite(@prefix + "windata/alldata_test.bin", File.binread(@prefix + "windata/alldata_backup.bin"))
     @current_sector = 0
@@ -267,7 +274,29 @@ class Game
                        boss_y: 0xb0,
                        door_x: 0x1e0,
                        door_y: 0x80
-                      }
+                      },
+        #"06-00-18" => {
+                       #boss_loc: "05",
+                       #door_loc: nil,
+                       #skip_door: true,
+                       #magnes_loc: "03",
+                       #skip_magnes: true,
+                       #hider_loc: nil,
+                       #boss_x: 0x50,
+                       #boss_y: 0xb0
+                      #},
+        #"07-00-12" => {
+                       #boss_loc: nil,
+                       #door_loc: nil,
+                       #magnes_loc: "04",
+                       #skip_magnes: true,
+                       #hider_loc: nil,
+                       #boss_x: 0x280,
+                       #boss_y: 0x160,
+                       #door_x: 0x2f0,
+                       #door_y: 0x80
+                      #},
+        #"07-00-14"?
       }
     end
   end
