@@ -35,7 +35,7 @@ class Game
       dra03_stages = stages
       yield (dra03_stages + alldata_stages)
     end
-    if File.file?("windata/alldata_backup.bin")
+    if File.file?(@backup_folder + "/windata/alldata_backup.bin")
       @alldata = GameFile.new(self, @backup_folder + "/windata/alldata_backup.bin", @game_folder + "/windata/alldata.bin", @patch_folder, alldata_md5, options, mode) do |stages|
         alldata_stages = stages
         yield (dra03_stages + alldata_stages)
