@@ -5,6 +5,7 @@ require_relative 'randomizers/pickup_randomizer'
 require_relative 'randomizers/drop_randomizer'
 require_relative 'randomizers/chest_pool_randomizer'
 require_relative 'randomizers/music_randomizer'
+require_relative 'randomizers/shop_randomizer'
 require_relative 'rv/ooe_checker'
 
 class Randomizer
@@ -65,6 +66,13 @@ class Randomizer
       yield [options_completed, "Creating wooden chest pools..."]
       reset_rng()
       ChestPoolRandomizer.new(@rng, game)
+      options_completed += 1
+    end
+
+    if @options[:randomize_shop] and [:normal, :auto_apply].include?(@mode)
+      yield [options_completed, "Randomizing shop items..."]
+      reset_rng()
+      ShopRandomizer.new(@rng, game)
       options_completed += 1
     end
 
