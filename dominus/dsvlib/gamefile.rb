@@ -55,6 +55,9 @@ class GameFile
     if bytes == 2
       encoding = "v*"
       length *= 2
+    elsif bytes == 4
+      encoding = "V*"
+      length *= 4
     end
     #if version == "1.03"
     #if /dra03/.match?(@backup_file)
@@ -95,6 +98,8 @@ class GameFile
     encoding = "C*"
     if bytes == 2
       encoding = "v*"
+    elsif bytes == 4
+      encoding = "V*"
     end
     if !content.kind_of?(Array)
       content = [content]
