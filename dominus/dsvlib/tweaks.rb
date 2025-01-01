@@ -1,4 +1,5 @@
 require_relative '../dsvrandom/rv/ooe_locations.rb'
+require_relative '../dsvrandom/rv/ooe_items.rb'
 
 class Tweaks
   def initialize(game)
@@ -369,15 +370,23 @@ class Tweaks
 
     replace_text(cat_text[cat][0], text_vague)
     replace_text(cat_text[cat][1], text_specific)
+  end
 
+  def set_chosen_transformation(transformation)
     transformation_numbers = {
       "Arma Felix" => 1,
       "Arma Chiroptera" => 2,
       "Arma Machina" => 3
     }
 
-    #changing the transformation that can talk to cats
-    @dra03[0x15d79c] = [0x80,0x3d] + relative_address(0x15d79c,0x8cf42a,7) + [transformation_numbers[transformation]] #size 7. CMP byte ptr [0x1808cf42a],transformation_numbers[transformation]
+    if @options[:rv_unlock_cerberus]
+      #changing the transformation that can talk to cats
+      @dra03[0x15d79c] = [0x80,0x3d] + relative_address(0x15d79c,0x8cf42a,7) + [transformation_numbers[transformation]] #size 7. CMP byte ptr [0x1808cf42a],transformation_numbers[transformation]
+    else
+      #When Cerberus is locked hints are less effective so we'll give all transformations catspeak. Check that the player number isn't 0 (Shanoa)
+      @dra03[0x15d79c] = [0x80,0x3d] + relative_address(0x15d79c,0x8cf42a,7) + [0] #size 7. CMP byte ptr [0x1808cf42a],0
+      @dra03[0x15d7a3] = [0x74,0x17] #size 2. JE 0x18015e3bc
+    end
 
     #changing the text description to indicate this
     descriptions = {
@@ -386,7 +395,76 @@ class Tweaks
       "Arma Machina" => [0x230f435e, "Automaton form.".unpack("C*") + [0x06] + "Speaks with cats.".unpack("C*") + [0x0a]],
     }
 
-    offset, desc = descriptions[transformation]
-    replace_text(offset, desc)
+    if @options[:rv_unlock_cerberus]
+      offset, desc = descriptions[transformation]
+      replace_text(offset, desc)
+    else
+      descriptions.each do |key, value|
+        offset, desc = value
+        replace_text(offset, desc)
+      end
+    end
+  end
+
+  def owned_item_byte(item_id)
+    # 1808cf081 is where the list of owned items starts. Add the item id to get owned item data.
+    return 0x8cf081 + item_id
+  end
+
+  def change_hardcoded_shop_pools(item_ids)
+    #It's needless, but this is used to squeeze nicely into the existing operation sizes. Could just nop everything, however, as the calculations that keep writing into rcx are unnecessary after shop is randomized.
+    reset_cl = [0xb1,0x20] #size 2. MOV CL,0x20
+    #This function will receive the actual item id+1, so we start from 0x8cf080, not 0x8cf081
+
+    #Pool 0 (default shop)
+    @dra03[0x2229f9] = reset_cl
+    @dra03[0x222a02] = [0x08,0x0d] + relative_address(0x222a02, 0x8cf080+item_ids[0][0], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222a1d] = reset_cl + nop(1)
+    @dra03[0x222a23] = [0x08,0x0d] + relative_address(0x222a23, 0x8cf080+item_ids[0][1], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222a4c] = reset_cl
+    @dra03[0x222a4e] = [0x08,0x0d] + relative_address(0x222a4e, 0x8cf080+item_ids[0][2], 6) + nop(1) #size 6 (7 in total.) OR byte ptr [0x1808cf080+item_id],CL; NOP
+    @dra03[0x222a5b] = [0x08,0x0d] + relative_address(0x222a5b, 0x8cf080+item_ids[0][3], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222a74] = reset_cl
+    @dra03[0x222a7f] = [0x08,0x0d] + relative_address(0x222a7f, 0x8cf080+item_ids[0][4], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222aa2] = [0x08,0x0d] + relative_address(0x222aa2, 0x8cf080+item_ids[0][5], 6) + nop(1) #size 6 (7 in total.) OR byte ptr [0x1808cf080+item_id],CL; NOP
+    @dra03[0x222aac] = [0x08,0x0d] + relative_address(0x222aac, 0x8cf080+item_ids[0][6], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+
+    #Pool 1 (Unlocked with Maneater)
+    @dra03[0x222af4] = reset_cl + nop(1)
+    @dra03[0x222af7] = [0x08,0x0d] + relative_address(0x222af7, 0x8cf080+item_ids[1][0], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222afd] = [0x08,0x0d] + relative_address(0x222afd, 0x8cf080+item_ids[1][1], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222b03] = [0x08,0x0d] + relative_address(0x222b03, 0x8cf080+item_ids[1][2], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+
+    #Pool 2 (Unlocked with Goliath)
+    @dra03[0x222b31] = reset_cl
+    @dra03[0x222b33] = [0x08,0x0d] + relative_address(0x222b33, 0x8cf080+item_ids[2][0], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222b45] = reset_cl + nop(1)
+    @dra03[0x222b4b] = [0x08,0x0d] + relative_address(0x222b4b, 0x8cf080+item_ids[2][1], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+    @dra03[0x222b61] = reset_cl + nop(1)
+    @dra03[0x222b64] = [0x08,0x0d] + relative_address(0x222b64, 0x8cf080+item_ids[2][2], 6) #size 6. OR byte ptr [0x1808cf080+item_id],CL
+  end
+
+  def set_price(item, price)
+    #The items aren't in the data in ID order so we have to sort it out
+    if OoEItems.consumables.has_key?(item[:name]) or OoEItems.materials.has_key?(item[:name])
+      offset = item[:id] - 0x75
+      consumable_ptr = 0x2d9b00 #Potion data
+      @dra03[consumable_ptr + 12*offset + 4, 4] = price
+    else #equipment
+      if item[:type] == "Ring"
+        offset = item[:id] - 0x13a #Protect Ring data
+        equipment_ptr = 0x2da054
+      elsif item[:type] == "Body"
+        offset = item[:id] - 0xe6 #Casual Clothes data
+        equipment_ptr = 0x2da364
+      elsif item[:type] == "Head"
+        offset = item[:id] - 0x101 #Eye for Decay data
+        equipment_ptr = 0x2d9844
+      else #Boots
+        offset = item[:id] - 0x125 #Moonwalkers data
+        equipment_ptr = 0x2d9644
+      end
+      @dra03[equipment_ptr + 20*offset + 4, 4] = price
+    end
   end
 end
