@@ -19,7 +19,7 @@ def self.options
 
   randomize_enemy_drops: "Randomizes the non-required items and glyphs dropped or cast by enemies.",
 
-  #randomize_shop: "Randomizes what items are for sale in the shop as well as item prices.",
+  randomize_shop: "Randomizes what items are for sale in the shop as well as item prices.",
   randomize_wooden_chests: "Randomizes the pool of items for wooden chests in each area.",
   
   reveal_breakable_walls: "Breakable walls will always blink as if you have Eye for Decay on.",
