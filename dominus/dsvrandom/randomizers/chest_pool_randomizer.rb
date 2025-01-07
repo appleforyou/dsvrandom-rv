@@ -49,34 +49,42 @@ class ChestPoolRandomizer
     available_common_wooden_chest_item_ids.shuffle!(random: rng)
     available_rare_wooden_chest_item_ids.shuffle!(random: rng)
 
-    item_tiers = {}
+    items = {}
     ((@wooden_chest_item_pools.size-1)*4).times do |i|
-      item_id, tier = @game.checker.get_unplaced_non_progression_item_except_relics_for_wooden_chest()
-      item_tiers[item_id] = tier
+      item_name, item = @game.checker.get_unplaced_non_progression_item_except_relics_for_wooden_chest()
+      items[item_name + i.to_s] = item #Assign a number so that we can have duplicates in the hash.
     end
 
-    #item_tier = OoEItems.equipment[key][:tier].to_f
-    #item_tier = (1.0-pool_scale)*item_tier
-    weights = item_tiers.keys.map do |item_id|
+    weights = items.keys.map do |item_name|
       #Weight higher-tiered equipment to be more likely to be chosen by green chests, and moreso for later-game chests
       weight = 1.0
-      if not item_tiers[item_id].nil? #nil means not equipment. We want to weight equipment higher.
-        weight *= 6
-        weight *= item_tiers[item_id]*10 + 1
+      base_name = items[item_name][:name]
+      if OoEItems.equipment.has_key?(base_name) #We want to weight equipment higher.
+        weight *= 24
+        weight *= items[item_name][:tier]*10 + 1
+      elsif OoEItems.consumables.has_key?(base_name)
+        #Weight consumables by their vanilla price.
+        if items[item_name][:price].nil?
+          price = 0
+        else
+          #Cap effective price for weighting at 1500 (slightly higher than Curry, which will typically full heal in randomizer)
+          price = [items[item_name][:price], 1500].min
+        end
+        weight *= price/150.0 + 1.0
       end
       weight = Math.sqrt(weight)
       weight
     end
 
     ps = weights.map{|w| w.to_f / weights.reduce(:+)}
-    weighted_items = item_tiers.keys.zip(ps).to_h
+    weighted_items = items.keys.zip(ps).to_h
     ordered_items = weighted_items.sort_by{|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
 
     @wooden_chest_item_pools.reverse_each do |pool|
       next if pool.pool_id == 0x15 # Skip rare pool A, which is never used
-
       (0..3).each do |i|
-        pool[i] = ordered_items.pop() + 1
+        item_id = items[ordered_items.pop()][:id] + 1
+        pool[i] = item_id
       end
     end
   end
