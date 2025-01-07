@@ -13,7 +13,7 @@ class Randomizer
   attr_reader :spoiler_log,
               :non_spoiler_log
 
-  def initialize(seed, input_folder, output_folder, patch_folder, difficulty, version, modded, options, mode = :normal)
+  def initialize(seed, input_folder, output_folder, patch_folder, settings, options, mode = :normal)
     @seed = seed
     @int_seed = Digest::MD5.hexdigest(seed).to_i(16)
     @rng = Random.new(@int_seed)
@@ -22,9 +22,10 @@ class Randomizer
     @patch_folder = patch_folder
     @options = options
     @mode = mode
-    options[:rv_difficulty] = difficulty
-    options[:version] = version
-    options[:modded_game] = modded
+    options[:rv_difficulty] = settings[:rv_difficulty]
+    options[:version] = settings[:version]
+    options[:modded_game] = settings[:modded_game]
+    options[:rv_hint_cat_locations] = settings[:rv_hint_cat_locations]
     @checker = OoEChecker.new(options, @rng)
     if seed.nil? || seed.empty?
       raise "No seed given"
@@ -49,6 +50,7 @@ class Randomizer
         log.puts "Seed: #{@seed}, Randomizer version: #{DSVRANDOM_VERSION}"
         log.puts "Selected options: #{options_string}"
         log.puts "Difficulty: #{@options[:rv_difficulty]}"
+        log.puts "Hint cat locations: #{@options[:rv_hint_cat_locations]}"
       end
     end
 
