@@ -409,12 +409,12 @@ def self.glyphs
     progression: true,
     id: 0x44
   },
-  "Cat Tackle" => {
-    name: "Cat Tackle",
-    type: "Damaging",
-    progression: true,
-    id: 0x33
-  },
+  #"Cat Tackle" => {
+    #name: "Cat Tackle",
+    #type: "Damaging",
+    #progression: true,
+    #id: 0x33
+  #},
   "Fidelis Caries" => {
     name: "Fidelis Caries",
     type: "Utility",
@@ -1447,7 +1447,7 @@ def self.consumables
     price: 2000
   },
   "Heart Repair" => {
-    name: "Tonic",
+    name: "Heart Repair",
     type: "Hearts",
     id: 0x7b,
     price: 3000
@@ -1489,7 +1489,7 @@ def self.consumables
     price: 130,
   },
   "Corn Soup" => {
-    name: "Tasty Meat",
+    name: "Corn Soup",
     type: "Health",
     id: 0x88,
     price: 150
