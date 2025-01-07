@@ -106,6 +106,7 @@ class Ui_Randomizer
     attr_reader :auto_apply
     attr_reader :lock_backup
     attr_reader :rv_arthrovertas_revenge
+    attr_reader :rv_hint_cat_locations
     attr_reader :version_selector
     attr_reader :version_label
     attr_reader :modded_game
@@ -409,13 +410,6 @@ class Ui_Randomizer
 
     @gridLayout_7.addWidget(@rv_puzzle_progression, 0, 2, 1, 1)
 
-    @rv_non_vanilla_glyphs = Qt::CheckBox.new(@groupBox_7)
-    @rv_non_vanilla_glyphs.objectName = "rv_non_vanilla_glyphs"
-    @rv_non_vanilla_glyphs.checked = false
-    @rv_non_vanilla_glyphs.enabled = false
-
-    @gridLayout_7.addWidget(@rv_non_vanilla_glyphs, 1, 0, 1, 1)
-
     @verticalLayout_7.addWidget(@groupBox_7)
 
     @groupBox_10 = Qt::GroupBox.new(@tab_3)
@@ -449,8 +443,7 @@ class Ui_Randomizer
 
     @rv_randomize_quest_rewards = Qt::CheckBox.new(@groupBox_7)
     @rv_randomize_quest_rewards.objectName = "rv_randomize_quest_rewards"
-    @rv_randomize_quest_rewards.checked = false
-    @rv_randomize_quest_rewards.enabled = false
+    @rv_randomize_quest_rewards.checked = true
 
     @gridLayout_12.addWidget(@rv_randomize_quest_rewards, 1, 1, 1, 1)
 
@@ -516,6 +509,21 @@ class Ui_Randomizer
     @rv_arthrovertas_revenge.checked = false
 
     @gridLayout_10.addWidget(@rv_arthrovertas_revenge, 0, 0, 1, 1)
+
+    @rv_non_vanilla_glyphs = Qt::CheckBox.new(@groupBox_7)
+    @rv_non_vanilla_glyphs.objectName = "rv_non_vanilla_glyphs"
+    @rv_non_vanilla_glyphs.checked = false
+    @rv_non_vanilla_glyphs.enabled = false
+
+    @gridLayout_10.addWidget(@rv_non_vanilla_glyphs, 1, 0, 1, 1)
+
+    @rv_hint_cat_label = Qt::Label.new(@tab_3)
+    @rv_hint_cat_label.objectName = "rv_hint_cat_label"
+    @gridLayout_7.addWidget(@rv_hint_cat_label, 1, 0, 1, 1)
+
+    @rv_hint_cat_locations = Qt::ComboBox.new(@tab_3)
+    @rv_hint_cat_locations.objectName = "rv_hint_cat_locations"
+    @gridLayout_7.addWidget(@rv_hint_cat_locations, 1, 1, 1, 1)
 
     @verticalLayout_7.addWidget(@groupBox_8)
 
@@ -732,17 +740,24 @@ class Ui_Randomizer
     @rv_unlock_cerberus.text = Qt::Application.translate("Randomizer", "Unlock Cerberus Gate", nil, Qt::Application::UnicodeUTF8)
     @rv_split_pools.text = Qt::Application.translate("Randomizer", "Split pools for item/glyph locations", nil, Qt::Application::UnicodeUTF8)
     @rv_puzzle_progression.text = Qt::Application.translate("Randomizer", "Allow progression glyphs at Cubus/Morbus", nil, Qt::Application::UnicodeUTF8)
-    @rv_randomize_quest_rewards.text = Qt::Application.translate("Randomizer", "Not implemented yet", nil, Qt::Application::UnicodeUTF8)
+    @rv_randomize_quest_rewards.text = Qt::Application.translate("Randomizer", "Quest Reward Items", nil, Qt::Application::UnicodeUTF8)
     @rv_arthrovertas_revenge.text = Qt::Application.translate("Randomizer", "Arthroverta's Revenge", nil, Qt::Application::UnicodeUTF8)
     @patch_label.text = Qt::Application.translate("Randomizer", "Patch Folder", nil, Qt::Application::UnicodeUTF8)
     @patch_folder_browse_button.text = Qt::Application.translate("Randomizer", "Browse", nil, Qt::Application::UnicodeUTF8)
     @rv_difficulty_label.text = Qt::Application.translate("Randomizer", "Item location difficulty preset", nil, Qt::Application::UnicodeUTF8)
-    @rv_difficulty_label.toolTip = Qt::Application.translate("Randomizer", "This option affects rules for which items are considered required to access locations. See the readme for details.", nil, Qt::Application::UnicodeUTF8)
+    @rv_difficulty_label.toolTip = Qt::Application.translate("Randomizer", "This option affects rules for which items are considered required to access locations. See the Help tab for details.", nil, Qt::Application::UnicodeUTF8)
     @rv_difficulty.toolTip = @rv_difficulty_label.toolTip
     @rv_difficulty.addItem("Vanilla")
     @rv_difficulty.addItem("Creative")
     @rv_difficulty.addItem("Do Your Worst")
     @rv_difficulty.setCurrentIndex(1)
+    @rv_hint_cat_label.text = Qt::Application.translate("Randomizer", "Hint cat locations (may depend on other settings)", nil, Qt::Application::UnicodeUTF8)
+    @rv_hint_cat_label.toolTip = Qt::Application.translate("Randomizer", "This option determines where cats which gave hints in the original game will be placed (or whether they give randomizer-relevant hints at all.)", nil, Qt::Application::UnicodeUTF8)
+    @rv_hint_cat_locations.toolTip = @rv_hint_cat_label.toolTip
+    @rv_hint_cat_locations.addItem("No Hints")
+    @rv_hint_cat_locations.addItem("Original Locations")
+    @rv_hint_cat_locations.addItem("Randomized Among Villager Locations")
+    @rv_hint_cat_locations.setCurrentIndex(1)
 
     @version_label.text = Qt::Application.translate("Randomizer", "Dominus Version", nil, Qt::Application::UnicodeUTF8)
     @version_label.toolTip = Qt::Application.translate("Randomizer", "Select the version of your Dominus Collection on Steam. It will be displayed on the main splash screen. 1.0 is not supported yet.", nil, Qt::Application::UnicodeUTF8)
