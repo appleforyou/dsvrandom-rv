@@ -107,6 +107,7 @@ class Ui_Randomizer
     attr_reader :lock_backup
     attr_reader :rv_arthrovertas_revenge
     attr_reader :rv_hint_cat_locations
+    attr_reader :reveal_enemy_info
     attr_reader :version_selector
     attr_reader :version_label
     attr_reader :modded_game
@@ -510,12 +511,18 @@ class Ui_Randomizer
 
     @gridLayout_10.addWidget(@rv_arthrovertas_revenge, 0, 0, 1, 1)
 
+    @reveal_enemy_info = Qt::CheckBox.new(@groupBox_10)
+    @reveal_enemy_info.objectName = "reveal_enemy_info"
+    @reveal_enemy_info.checked = true
+
+    @gridLayout_10.addWidget(@reveal_enemy_info, 1, 0, 1, 1)
+
     @rv_non_vanilla_glyphs = Qt::CheckBox.new(@groupBox_7)
     @rv_non_vanilla_glyphs.objectName = "rv_non_vanilla_glyphs"
     @rv_non_vanilla_glyphs.checked = false
     @rv_non_vanilla_glyphs.enabled = false
 
-    @gridLayout_10.addWidget(@rv_non_vanilla_glyphs, 1, 0, 1, 1)
+    @gridLayout_10.addWidget(@rv_non_vanilla_glyphs, 0, 1, 1, 1)
 
     @rv_hint_cat_label = Qt::Label.new(@tab_3)
     @rv_hint_cat_label.objectName = "rv_hint_cat_label"
@@ -742,6 +749,7 @@ class Ui_Randomizer
     @rv_puzzle_progression.text = Qt::Application.translate("Randomizer", "Allow progression glyphs at Cubus/Morbus", nil, Qt::Application::UnicodeUTF8)
     @rv_randomize_quest_rewards.text = Qt::Application.translate("Randomizer", "Quest Reward Items", nil, Qt::Application::UnicodeUTF8)
     @rv_arthrovertas_revenge.text = Qt::Application.translate("Randomizer", "Arthroverta's Revenge", nil, Qt::Application::UnicodeUTF8)
+    @reveal_enemy_info.text = Qt::Application.translate("Randomizer", "Reveal Enemy Info", nil, Qt::Application::UnicodeUTF8)
     @patch_label.text = Qt::Application.translate("Randomizer", "Patch Folder", nil, Qt::Application::UnicodeUTF8)
     @patch_folder_browse_button.text = Qt::Application.translate("Randomizer", "Browse", nil, Qt::Application::UnicodeUTF8)
     @rv_difficulty_label.text = Qt::Application.translate("Randomizer", "Item location difficulty preset", nil, Qt::Application::UnicodeUTF8)
