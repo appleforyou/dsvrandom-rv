@@ -28,7 +28,7 @@ require 'set'
   attr_accessor :glyphs_placed_as_event_glyphs,
                 :unplaced_droppable_pickups,
                 :used_droppable_pickups,
-                :super_drops
+                :upgraded_static_pickups
 
   def initialize(options, rng)
     @options = options
@@ -43,7 +43,16 @@ require 'set'
                   boots: 0,
                   rings: [0, 0]
                  }
-    @super_drops = []
+    @upgraded_static_pickups = []
+    @quest_item_status = {
+      "Sage" => 3,
+      "Iron Ore" => 3,
+      "Silver Ore" => 3,
+      "Gold Ore" => 3,
+      "Cotton Thread" => 5,
+      "Silk Thread" => 5,
+      "Cashmere Thread" => 5
+    }
     @latest_accessible_locations = []
     @progression_locations = []
     add_extra_item("HP Max Up", "Max Up", 0x7f, 13)
@@ -301,7 +310,7 @@ require 'set'
 
       # If a glyph has already been placed as an event glyph, do not place it again somewhere.
       # If the player gets one from a glyph statue first, then the one in the event/puzzle won't appear.
-      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @super_drops.include?(item[:id])}
+      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @upgraded_static_pickups.include?(item[:id])}
 
       return get_unplaced_non_progression_pickup(valid_ids: valid_ids)
     end
@@ -346,7 +355,7 @@ require 'set'
 
       # If a glyph has already been placed as an event glyph, do not place it again somewhere.
       # If the player gets one from a glyph statue first, then the one in the event/puzzle won't appear.
-      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @super_drops.include?(item[:id])}
+      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @upgraded_static_pickups.include?(item[:id])}
 
       return get_unplaced_non_progression_pickup_for_enemy_drop(enemy_id, valid_ids: valid_ids)
     end
@@ -402,7 +411,7 @@ require 'set'
 
       # If a glyph has already been placed as an event glyph, do not place it again somewhere.
       # If the player gets one from a glyph statue first, then the one in the event/puzzle won't appear.
-      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @super_drops.include?(item[:id])}
+      @unplaced_droppable_pickups.delete_if {|name, item| @glyphs_placed_as_event_glyphs.include?(item[:id]) or @upgraded_static_pickups.include?(item[:id])}
 
       return get_unplaced_non_progression_pickup_for_wooden_chest(pool_id, valid_ids: valid_ids)
     end
@@ -426,9 +435,18 @@ require 'set'
     weighted_items = items.zip(ps).to_h
     pickup_name = weighted_items.max_by{|_, weight| rng.rand ** (1.0 / weight)}.first
 
-    @unplaced_droppable_pickups.delete(pickup_name)
+    #Give quest items which are required more than once a chance to stay in the contention to be in multiple chest pools
+    if @quest_item_status.has_key?(pickup_name) and @quest_item_status[pickup_name] > 0
+      threshold = (@quest_item_status[pickup_name] - 1).to_f / @quest_item_status[pickup_name].to_f
+      if rng.rand > threshold #Threshold is the chance for the item to stay in the pool
+        @unplaced_droppable_pickups.delete(pickup_name)
+      end
+      @quest_item_status[pickup_name] -= 1
+    else
+      @unplaced_droppable_pickups.delete(pickup_name)
+    end
 
-    return [OoEItems.items[pickup_name][:id], OoEItems.items[pickup_name][:tier]]
+    return [pickup_name, OoEItems.items[pickup_name]]
   end
 
   def get_unplaced_non_progression_item_except_relics_for_wooden_chest()
