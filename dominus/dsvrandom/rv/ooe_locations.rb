@@ -1698,6 +1698,15 @@ require_relative 'ooe_logic'
       },
       {
         zone: "Skeleton Cave",
+        name: "George",
+        type: ["Villager"],
+        container: "Visible",
+        id: "11-00-08_02",
+        room: "Skeleton Cave (Lower Sanctum)",
+        available: lambda { @logic.skeleCave() }
+      },
+      {
+        zone: "Skeleton Cave",
         name: "HEART Max Up",
         type: ["Item", "Powerup"],
         container: "Chest",
