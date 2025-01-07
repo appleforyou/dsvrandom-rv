@@ -12,6 +12,7 @@ def self.options
   rv_puzzle_progression: "If checked, progression items can be placed at locations which require certain elemental attack glyphs to solve the puzzle.",
   rv_randomize_quest_rewards: "Quests in Wygol Village which give items will change to give random rewards. Quest requirements do not change. The final quest per villager will give a random glyph, and other quests will give a random equipment or consumable item. Progression glyphs can appear, but they are not required by logic.",
   rv_arthrovertas_revenge: "Tired of not being fought in the randomizer, Arthroverta has decided to take the matter into its own claws... (Pickups will not spawn in the boss's room. Re-enter the room after it dies.)",
+  reveal_enemy_info: "Reveals enemy data on the secondary screen which displays enemy HP/EXP/weaknesses. Also will display enemy drops if you have the relic Book of Spirits. Only handles the secondary screen for now, not the bestiary in the pause menu.",
 
 
   randomize_pickups: "Randomizes items and glyphs you find in static locations.",
