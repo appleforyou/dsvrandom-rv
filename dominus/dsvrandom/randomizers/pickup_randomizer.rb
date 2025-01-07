@@ -53,6 +53,18 @@ class PickupRandomizer
 
     checker.add_item("Glyph Sleeve")
 
+    if @options[:rv_randomize_quest_rewards]
+      nonrelic_items = OoEItems.equipment.merge(OoEItems.consumables)
+      game.quests.each do |quest|
+        next if quest.quest_index == 0 #unused quest
+        next unless quest.reward_is_pickup?
+        final_quest_indices = [4, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35]
+        possible_rewards = final_quest_indices.include?(quest.quest_index) ? OoEItems.glyphs : nonrelic_items
+        reward_key = possible_rewards.keys.sample(random: rng)
+        quest.reward = possible_rewards[reward_key][:id] + 1
+      end
+    end
+
     @total_pickups = checker.all_pickups.length
     place_pickups(checker) do |pickups_placed|
       percent_done = pickups_placed.to_f / Locations.locs.size
@@ -90,23 +102,57 @@ class PickupRandomizer
     retries = 0
     temp_bans = []
 
-    transformation = ["Arma Felix", "Arma Chiroptera", "Arma Machina"].sample(random: rng)
-    @game.tweaks.set_chosen_transformation(transformation)
-    @checker.all_progression_pickups[transformation] = OoEItems.glyphs[transformation]
-    cats = ["SoybeanFlour", "Tofu", "Ink"]
+    if @options[:rv_hint_cat_locations] != "No Hints"
+      transformation = ["Arma Felix", "Arma Chiroptera", "Arma Machina"].sample(random: rng)
+      @game.tweaks.set_chosen_transformation(transformation)
+      @checker.all_progression_pickups[transformation] = OoEItems.glyphs[transformation]
+      cats = ["SoybeanFlour", "Tofu", "Ink"]
+      if @options[:rv_hint_cat_locations] == "Randomized Among Villager Locations"
+        #Randomize cats among villager locations
+        villager_locations = Locations.locs.select {|loc| loc[:type].include?("Villager")}
+        cats.each do |cat|
+          loc = villager_locations.sample(random: rng)
+          cat_entity = @game.get_entity_by_id(loc[:id])
+          cat_entity.type = 2 #special object
+          cat_entity.subtype = 0x3f #cat
+          cat_indexes = {"Tofu" => 0, "Ink" => 1, "SoybeanFlour" => 2}
+          cat_entity.var_a = cat_indexes[cat]
+          cat_entity.var_b = 2 #needs rescuing
+          villager_locations.delete(loc)
+        end
+        #Also null out the original cat locations
+        ["12-00-07_07", "0E-00-03_00", "08-02-01-10"].each do |loc|
+          original_cat = @game.get_entity_by_id(loc)
+          original_cat.type = 0
+        end
+        #Populate the rest of the villager locations with skeletons for fun
+        villager_locations.each do |loc|
+          skele_entity = @game.get_entity_by_id(loc[:id])
+          skele_entity.type = 1 #enemy
+          skele_entity.subtype = 2 #skeleton
+          skele_entity.var_a = 1 #can jump
+        end
+      end
+    else
+      transformation = nil
+    end
+
+
     all_custos = ["Dextro Custos", "Sinestro Custos", "Arma Custos"]
     all_dominus = ["Dominus Hatred", "Dominus Anger", "Dominus Agony"]
     all_custos_dominus = all_custos + all_dominus
-    if @options[:rv_unlock_cerberus]
-      hints_to_use = all_dominus
-    else
-      hints_to_use = all_dominus + all_custos
-      nums = (1..6).to_a
-      weights = (1..6).flat_map {|w| Math.sqrt(w)}
-      weights = weights.map{|w| w.to_f / weights.reduce(:+)}
-      weighted_nums = nums.zip(weights).to_h
-      hint_numbers = weighted_nums.max_by(3){|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
-      hint_counter = 1
+    if @options[:rv_hint_cat_locations] != "No Hints"
+      if @options[:rv_unlock_cerberus]
+        hints_to_use = all_dominus
+      else
+        hints_to_use = all_dominus + all_custos
+        nums = (1..6).to_a
+        weights = (1..6).flat_map {|w| Math.sqrt(w)}
+        weights = weights.map{|w| w.to_f / weights.reduce(:+)}
+        weighted_nums = nums.zip(weights).to_h
+        hint_numbers = weighted_nums.max_by(3){|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
+        hint_counter = 1
+      end
     end
     all_progression_glyphs = checker.all_progression_pickups.select {|k, v| OoEItems.glyphs.has_key?(k)}
     all_non_progression_glyphs = OoEItems.glyphs.select {|k, v| not all_progression_glyphs.has_key?(k)}
@@ -120,6 +166,8 @@ class PickupRandomizer
     #The same thing tends to happen with sticking lots of "undroppables" like max ups in final approach, so let's pick some random items as spacers too.
     #It mostly affects end game and weighting for tiers will be handled by later code.
     all_spacer_items = checker.all_pickups.reject {|k, v| checker.current_items.include?(k) or OoEItems.undroppables.has_key?(k) or OoEItems.glyphs.has_key?(k)}.keys.sample(30, random: rng)
+
+    ensured_quest_items = []
 
     while true
       possible_locations = checker.get_accessible_locations().reject {|loc| locations_randomized_to_have_useful_pickups.include?(loc[:id])}
@@ -236,9 +284,13 @@ class PickupRandomizer
             weight = max_usefulness - usefulness + 1
             #Weight higher tier equipment as less likely to be chosen.
             if OoEItems.equipment.has_key?(pickup)
-              weight /= (OoEItems.equipment[pickup][:tier]*0.5+1.0).to_f
+              if @options[:rv_difficulty] == "Do Your Worst"
+                weight /= (OoEItems.equipment[pickup][:tier]*2.0+1.0).to_f
+              else
+                weight /= (OoEItems.equipment[pickup][:tier]*0.5+1.0).to_f
+              end
             #Weight "useless" progression items as being less likely to be chosen. This helps avoid waiting too long to place real progression too often.
-            elsif checker.all_progression_pickups.has_key?(pickup) and usefulness == 0 and not all_custos_dominus.include?(pickup) and pickup != transformation
+            elsif (checker.all_progression_pickups.has_key?(pickup) or ["Moonwalkers", "Mercury Boots", "Winged Boots"].include?(pickup)) and usefulness == 0 and not all_custos_dominus.include?(pickup) and pickup != transformation
               weight *= @options[:rv_difficulty] == "Vanilla" ? 0.7 : 0.5
             elsif OoEItems.consumables.has_key?(pickup) or OoEItems.materials.has_key?(pickup)
               #Lightly weight these lower since we prefer to put them in brown chests.
@@ -425,7 +477,7 @@ class PickupRandomizer
       end
       puts spoiler_str if verbose
 
-      if hints_to_use.include?(pickup_name) and not cats.empty?
+      if @options[:rv_hint_cat_locations] != "No Hints" and hints_to_use.include?(pickup_name) and not cats.empty?
         if (@options[:rv_unlock_cerberus]) or (not @options[:rv_unlock_cerberus] and hint_numbers.include?(hint_counter))
           cats = cats.shuffle(random: rng)
           cat_to_use = cats.pop()
@@ -439,8 +491,19 @@ class PickupRandomizer
       if /Drops/.match?(pickup_name)
         if rng.rand() <= 0.7
           game.tweaks.create_super_drop(pickup_name)
-          checker.super_drops << item[:id]
+          checker.upgraded_static_pickups << item[:id]
         end
+      end
+
+      #Some items are required in amounts greater than 1 to complete all quests. When it's placed as a static pickup, it's quite possible completing the quest will be impossible.
+      items_required_in_multiple = ["Sage", "Iron Ore", "Silver Ore", "Gold Ore", "Cotton Thread", "Silk Thread", "Cashmere Thread"]
+      #May add a chance of making the static pickup enough to complete the quest, but for now the randomizer ensures that the pickup will also be placed elsewhere as an enemy drop or wooden chest item.
+      if items_required_in_multiple.include?(pickup_name)
+        #if rng.rand <= 0.7
+          #handle_static_quest_requirement(pickup_name)
+        #else
+          ensured_quest_items << pickup_name
+        #end
       end
 
       on_first_item = false
@@ -448,7 +511,7 @@ class PickupRandomizer
       yield(pickups_placed)
     end
     checker.progression_locations = locations_randomized_to_have_useful_pickups
-    checker.unplaced_droppable_pickups.delete_if {|k, v| checker.current_items.include?(k)}
+    checker.unplaced_droppable_pickups.delete_if {|k, v| checker.current_items.include?(k) and (not ensured_quest_items.include?(k))}
     checker.used_droppable_pickups += checker.current_items.select {|item| checker.all_droppable_pickups.has_key?(item)}
     puts "Unplaced items: #{@total_pickups - checker.progression_locations.size} - #{checker.pickups_by_current_num_locations_they_access().keys}" if verbose
     spoiler_log.puts "All pickups placed successfully."
@@ -471,6 +534,23 @@ class PickupRandomizer
       end
       change_entity_location_to_pickup_id(loc, pickup_id)
     end
+  end
+
+  def handle_static_quest_requirement(pickup)
+    requirement_to_quest = {
+      "Sage" => [0x3,0x4],
+      "Iron Ore" => [0x9],
+      "Silver Ore" => [0xa],
+      "Gold Ore" => [0xb],
+      "Cotton Thread" => [0x1b],
+      "Silk Thread" => [0x1c],
+      "Cashmere Thread" => [0x1d]
+    }
+    quest_ids = requirement_to_quest[pickup]
+    quest_ids.each do |id|
+      game.quests[id].handle_static_quest_requirement()
+    end
+    checker.upgraded_static_pickups << OoEItems.items[pickup][:id]
   end
 
   def place_progression_pickups(checker, &block)
@@ -839,7 +919,8 @@ class PickupRandomizer
           entity.var_b = pickup_id + 1
         else
           puzzle_glyph_ids = [0x1D, 0x1F, 0x20, 0x22, 0x24, 0x26, 0x27, 0x2A, 0x2B, 0x2F, 0x30, 0x31, 0x32, 0x46, 0x4E]
-          if puzzle_glyph_ids.include?(pickup_id)
+          #if puzzle_glyph_ids.include?(pickup_id)
+          if rng.rand < 0.30
             # Free glyph
             entity.type = 4
             entity.subtype = 2
