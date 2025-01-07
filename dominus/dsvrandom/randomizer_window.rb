@@ -25,6 +25,7 @@ class RandomizerWindow < Qt::Dialog
   slots "restore_backup()"
   slots "difficulty_changed(int)"
   slots "version_changed(int)"
+  slots "hints_changed(int)"
 
   def initialize
     super(nil, Qt::WindowMinimizeButtonHint)
@@ -47,6 +48,7 @@ class RandomizerWindow < Qt::Dialog
     connect(@ui.seed, SIGNAL("editingFinished()"), self, SLOT("update_settings()"))
     connect(@ui.rv_difficulty, SIGNAL("activated(int)"), self, SLOT("difficulty_changed(int)"))
     connect(@ui.version_selector, SIGNAL("activated(int)"), self, SLOT("version_changed(int)"))
+    connect(@ui.rv_hint_cat_locations, SIGNAL("activated(int)"), self, SLOT("hints_changed(int)"))
 
     Options.options.each_key do |option_name|
       connect(@ui.send(option_name), SIGNAL("clicked(bool)"), self, SLOT("update_settings()"))
@@ -100,6 +102,14 @@ class RandomizerWindow < Qt::Dialog
         @ui.send(option_name).checked = default_value
       end
     end
+    if @ui.rv_difficulty.currentIndex() != 1
+      @ui.rv_difficulty.setCurrentIndex(1)
+      any_setting_changed = true
+    end
+    if @ui.rv_hint_cat_locations.currentIndex() != 1
+      @ui.rv_hint_cat_locations.setCurrentIndex(1)
+      any_setting_changed = true
+    end
 
     if any_setting_changed
       update_settings()
@@ -138,6 +148,10 @@ class RandomizerWindow < Qt::Dialog
     version_index = @ui.version_selector.findText(@settings[:version].to_s)
     if version_index != -1
       @ui.version_selector.setCurrentIndex(version_index)
+    end
+    hints_index = @ui.rv_hint_cat_locations.findText(@settings[:rv_hint_cat_locations].to_s)
+    if hints_index != -1
+      @ui.rv_hint_cat_locations.setCurrentIndex(hints_index)
     end
   end
 
@@ -194,6 +208,7 @@ class RandomizerWindow < Qt::Dialog
 
     @settings[:rv_difficulty] = @ui.rv_difficulty.itemText(@ui.rv_difficulty.currentIndex)
     @settings[:version] = @ui.version_selector.itemText(@ui.version_selector.currentIndex)
+    @settings[:rv_hint_cat_locations] = @ui.rv_hint_cat_locations.itemText(@ui.rv_hint_cat_locations.currentIndex)
 
     save_settings()
   end
@@ -222,7 +237,7 @@ class RandomizerWindow < Qt::Dialog
 
     Options.options.each_key do |option_name|
       # Options that are disabled don't count as being checked, even though they visually remain checked when disabled.
-      options_hash[option_name] = @ui.send(option_name).checked && @ui.send(option_name).enabled
+      options_hash[option_name] = @ui.send(option_name).checked# && @ui.send(option_name).enabled
     end
     options_hash[:seed] = @settings[:seed]
 
@@ -253,8 +268,10 @@ class RandomizerWindow < Qt::Dialog
       end
     end
     @ui.rv_open_castle.setEnabled(false)
-    @ui.rv_randomize_quest_rewards.setEnabled(false)
     @ui.rv_non_vanilla_glyphs.setEnabled(false)
+    if (not @ui.rv_unlock_albus.checked) and @ui.rv_hint_cat_locations.currentIndex() == 2
+      @ui.rv_hint_cat_locations.setCurrentIndex(1)
+    end
   end
 
   def difficulty_changed(diff_index)
@@ -264,6 +281,11 @@ class RandomizerWindow < Qt::Dialog
 
   def version_changed(version_index)
     @ui.version_selector.setCurrentIndex(version_index)
+    update_settings()
+  end
+
+  def hints_changed(hints_index)
+    @ui.rv_hint_cat_locations.setCurrentIndex(hints_index)
     update_settings()
   end
 
@@ -498,7 +520,7 @@ class RandomizerWindow < Qt::Dialog
     options_hash = get_current_options_hash()
 
     begin
-      randomizer = Randomizer.new(seed, @settings[:clean_rom_path], @settings[:output_folder], @settings[:patch_folder], @settings[:rv_difficulty], @settings[:version], @settings[:modded_game], options_hash, mode)
+      randomizer = Randomizer.new(seed, @settings[:clean_rom_path], @settings[:output_folder], @settings[:patch_folder], @settings, options_hash, mode)
     rescue StandardError => e
       Qt::MessageBox.critical(self, "Randomization Task Failed", "Randomization task failed with error:\n#{e.message}\n\n#{e.backtrace.join("\n")}")
       return
@@ -648,7 +670,8 @@ class RandomizerWindow < Qt::Dialog
 
     text.puts "DSVRandom Options Preset, Randomizer version: #{DSVRANDOM_VERSION}"
     text.puts "Selected options: #{options_string}"
-    text.puts "Difficulty: #{options[:rv_difficulty]}"
+    text.puts "Difficulty: #{@settings[:rv_difficulty]}"
+    text.puts "Hint cat locations: #{@settings[:rv_hint_cat_locations]}"
 
     return text.string
   end
@@ -703,7 +726,7 @@ class RandomizerWindow < Qt::Dialog
     end
 
     if is_preset
-      match = text.match(/DSVRandom Options Preset, Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)/)
+      match = text.match(/DSVRandom Options Preset, Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)/)
       if match.nil?
         raise "#{format_type.capitalize} is not in the proper format."
       end
@@ -713,8 +736,9 @@ class RandomizerWindow < Qt::Dialog
       version = $1
       options = $2.split(", ").map(&:to_sym)
       difficulty = $3
+      hint_cat_locations = $4
     else
-      match = text.match(/Seed: ([#{VALID_SEED_CHARACTERS}]+), Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)/)
+      match = text.match(/Seed: ([#{VALID_SEED_CHARACTERS}]+), Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)/)
       if match.nil?
         raise "#{format_type.capitalize} is not in the proper format."
       end
@@ -723,6 +747,7 @@ class RandomizerWindow < Qt::Dialog
       version = $2
       options = $3.split(", ").map(&:to_sym)
       difficulty = $4
+      hint_cat_locations = $5
       game = "Order of Ecclesia"
     end
 
@@ -747,6 +772,8 @@ class RandomizerWindow < Qt::Dialog
     (Options.options.keys-options).each do |option_name|
       @ui.send(option_name).checked = false
     end
+    @ui.rv_difficulty.setCurrentIndex(@ui.rv_difficulty.findText(difficulty))
+    @ui.rv_hint_cat_locations.setCurrentIndex(@ui.rv_hint_cat_locations.findText(hint_cat_locations))
 
     @ui.tabWidget.currentIndex = 0
     update_settings()
