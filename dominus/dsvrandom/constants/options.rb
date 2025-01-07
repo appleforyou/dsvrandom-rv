@@ -10,7 +10,7 @@ def self.options
   rv_unlock_cerberus: "The Cerberus Gate in Dracula's castle will be open without requiring Custos glyphs.",
   rv_split_pools: "If checked, glyphs can only appear at vanilla glyph locations, and items can only appear at vanilla item locations.",
   rv_puzzle_progression: "If checked, progression items can be placed at locations which require certain elemental attack glyphs to solve the puzzle.",
-  #rv_randomize_quest_rewards: "Quests in Wygol Village which give items will change to give random rewards. Quest requirements do not change. The final quest per villager will give a random glyph, and other quests will give a random equipment or consumable item. Progression glyphs can appear, but they are not required by logic.",
+  rv_randomize_quest_rewards: "Quests in Wygol Village which give items will change to give random rewards. Quest requirements do not change. The final quest per villager will give a random glyph, and other quests will give a random equipment or consumable item. Progression glyphs can appear, but they are not required by logic.",
   rv_arthrovertas_revenge: "Tired of not being fought in the randomizer, Arthroverta has decided to take the matter into its own claws... (Pickups will not spawn in the boss's room. Re-enter the room after it dies.)",
 
 
