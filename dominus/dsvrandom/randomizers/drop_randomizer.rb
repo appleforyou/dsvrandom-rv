@@ -82,7 +82,7 @@ class DropRandomizer
         # Only give glyph drops to enemies that originally had a glyph drop.
         # Other enemies cannot drop a glyph anyway.
 
-        if /[(Fomor)(Demon)]/.match?(enemy.name)
+        if /(Fomor|Demon)/.match?(enemy.name)
           # Fomors and Demons can actually use the glyph you give them, but only if it's a projectile arm glyph.
           enemy.glyph = checker.get_unplaced_non_progression_projectile_glyph() + 1
         else
