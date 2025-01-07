@@ -2,6 +2,7 @@ require_relative 'room'
 require_relative 'gamefile'
 require_relative 'tweaks'
 require_relative 'enemy_dna'
+require_relative 'quest'
 
 class Game
 
@@ -83,6 +84,16 @@ class Game
       end
 
       enemy_dnas
+    end
+  end
+
+  def quests
+    @quests ||= begin
+      quests = []
+      0x24.times do |i|
+        quests << Quest.new(i, self)
+      end
+      quests
     end
   end
 
