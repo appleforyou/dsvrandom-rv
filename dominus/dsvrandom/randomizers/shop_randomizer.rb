@@ -23,7 +23,7 @@ class ShopRandomizer
   end
 
   def randomize_shop()
-    available_shop_items = OoEItems.shoppables.reject {|k, v| OoEItems.materials.has_key?(k) or @game.checker.super_drops.include?(v[:id])}
+    available_shop_items = OoEItems.shoppables.reject {|k, v| OoEItems.materials.has_key?(k) or @game.checker.upgraded_static_pickups.include?(v[:id])}
     shop_keys = available_shop_items.keys.shuffle(random: rng)
 
     hardcoded_pools = [
