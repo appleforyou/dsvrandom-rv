@@ -325,6 +325,10 @@ class Tweaks
 
     #Relics autoequip from breakable walls
     @dra03[0x3ccbc] = 0x50
+
+    if @options[:reveal_enemy_info]
+      reveal_bestiary()
+    end
   end
 
   def post_read_tweaks()
@@ -466,5 +470,61 @@ class Tweaks
       end
       @dra03[equipment_ptr + 20*offset + 4, 4] = price
     end
+  end
+
+  def reveal_bestiary()
+    #Skip checking for whether you've killed an enemy for top screen hp/exp
+    #@dra03[0x2192e1] = nop(2)
+    #Skip checking for top screen hp
+    @dra03[0x219163] = [0x8b,0xd1] + nop(1) #size 2 (3 in total.) MOV EDX,ECX; NOP
+    #Skip checking for top screen exp
+    @dra03[0x21919f] = [0x8b,0xd1] + nop(1) #size 2 (3 in total.) MOV EDX,ECX; NOP
+    #Skip checking for weaknesses/resistances
+    @dra03[0x2198ad] = nop(2)
+    #Skip checking for item 1 having been acquired
+    #@dra03[0x2191f3] = jump(0x2191f3,0x2192a6,:JMP) + nop(1) #size 5 (6 in total.) JMP 0x180219ea6; NOP
+    #(Alternately, not also) check for whether you have Book of Spirits
+    #Overwrite some unnecessary code to check for Book of Spirits. This will be used as an isolated code space to jump to.
+    @dra03[0x2192d4] = [0x8b,0x05] + relative_address(0x2192d4,0x8cf0f4,6) #size 6. MOV EAX,[0x1808cf0f4]
+    @dra03[0x2192da] = [0x0f,0xba,0xe0,0x0e] #size 4. BT EAX,0xe
+    @dra03[0x2192de] = [0x73,0xca] #size 2. JAE 0x180219eaa
+    @dra03[0x2192e0] = [0xeb,0xc4] + nop(1) #size 2 (3 in total.) JMP 0x180219ea6; NOP
+    #The standard code will jump over our custom code from the previous instruction. It will only be accessed by a jump.
+    @dra03[0x2192d2] = [0xeb,0x0f] #size 2. JMP 0x180219ee3
+    #Jump to custom Book of Spirits code when enemy drop 1 hasn't been seen
+    @dra03[0x2191f3] = jump(0x2191f3,0x2192d4,:JAE) #size 6. JAE 0x180219ed4
+    #Skip checking for item 2 having been acquired
+    #@dra03[0x219247] = [0xeb,0x5d] #size 2. JMP 0x180219ea6
+    #(Alternately, not also) check for whether you have Book of Spirits
+    #No code space for a full jump, so do an intermediate jump to the item 1 code when enemy drop 2 hasn't been seen.
+    @dra03[0x219247] = [0x73,0xaa] #size 2. JAE 0x180219df3
+    #Skip checking for glyph having been acquired
+    #@dra03[0x2192a4] = nop(2)
+    #(Alternately, not also) check for whether you have Book of Spirits
+    #Jump to custom Book of Spirits code when enemy glyph hasn't been seen
+    @dra03[0x2192a4] = [0x74,0x2e] #size 2. JE 0x180219ed4
+  end
+
+  def change_item_text_for_static_requirement(item_name, new_text)
+    case item_name
+    when "Cotton Thread"
+      text_ptr = 0x230f21be
+    when "Silk Thread"
+      text_ptr = 0x230f21dc
+    when "Cashmere Thread"
+      text_ptr = 0x230f21f6
+    when "Mandrake Root"
+      text_ptr = 0x230f2244
+    when "Merman Meat"
+      text_ptr = 0x230f2262
+    when "Iron Ore"
+      text_ptr = 0x230f2344
+    when "Silver Ore"
+      text_ptr = 0x230f2358
+    when "Gold Ore"
+      text_ptr = 0x230f2370
+    end
+    new_text = new_text.unpack("C*") + [0x0a]
+    replace_text(text_ptr, new_text)
   end
 end
