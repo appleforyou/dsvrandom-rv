@@ -51,7 +51,9 @@ class PickupRandomizer
     checker.add_item("Glyph Union")
     checker.add_item("Torpor")
 
-    checker.add_item("Glyph Sleeve")
+    if !options[:rv_trick_sleeve]
+      checker.add_item("Glyph Sleeve")
+    end
 
     if @options[:rv_randomize_quest_rewards]
       nonrelic_items = OoEItems.equipment.merge(OoEItems.consumables)
@@ -182,7 +184,7 @@ class PickupRandomizer
       custos = checker.current_items.select {|item| all_custos.include?(item)}
       dominus = checker.current_items.select {|item| all_dominus.include?(item)}
       spacer_glyphs = checker.current_items.select {|item| all_spacer_glyphs.include?(item)}
-      current_relics = checker.current_items.select {|item| OoEItems.relics.has_key?(item)}
+      current_relics = checker.current_items.select {|item| OoEItems.relics.has_key?(item) and not OoEItems.relics[item][:start_with]}
       progression_relics = checker.current_items.select {|item| ["Ordinary Rock", "Serpent Scale"].include?(item)}
       spacer_items = checker.current_items.select {|item| all_spacer_items.include?(item)}
 
@@ -225,8 +227,8 @@ class PickupRandomizer
         end
         if relic_locations.size == 1 and progression_relics.size < 2 and pickups_by_locations.values.max > 0
           pickups_by_locations = pickups_by_locations.select {|pickup, num_locations| OoEItems.glyphs.has_key?(pickup) or (OoEItems.relics.has_key?(pickup) and num_locations > 0) or num_locations > 0}
-        elsif relic_locations.size == 1 and current_relics.size < 3 and pickups_by_locations.values.max == 0
-          #don't forget to leave room for Book of Spirits, but don't prioritize it
+        elsif relic_locations.size == 1 and current_relics.size < 4 and pickups_by_locations.values.max == 0
+          #don't forget to leave room for Book of Spirits and Trick Sleeve if enabled, but don't prioritize them
           pickups_by_locations = pickups_by_locations.select {|pickup, num_locations| OoEItems.glyphs.has_key?(pickup) or OoEItems.relics.has_key?(pickup) or num_locations > 0}
         elsif glyph_locations.size == possible_locations.size
           #Every item location has been filled, so skip everything but glyphs to save time.
@@ -449,7 +451,6 @@ class PickupRandomizer
       temp_bans = []
 
       location = possible_locations_to_choose_from.sample(random: rng)
-      locations_randomized_to_have_useful_pickups << location[:id]
 
       item = OoEItems.items[pickup_name]
       if item[:type].include?("Villager")
@@ -468,6 +469,7 @@ class PickupRandomizer
 
 
       change_entity_location_to_pickup_id(location, item[:id], pickup_name) #pickup name is only needed to disambiguate money items since they all have the same ID
+      locations_randomized_to_have_useful_pickups << location[:id]
 
       checker.add_item(pickup_name)
       if pickups_to_use[pickup_name] > 0 or checker.all_progression_pickups.has_key?(pickup_name)
@@ -533,6 +535,13 @@ class PickupRandomizer
         end
       end
       change_entity_location_to_pickup_id(loc, pickup_id)
+    end
+    #Also set the hard mode Glyph Sleeve chest if Trick Sleeve is enabled
+    if options[:rv_trick_sleeve]
+      pickup_id = checker.get_unplaced_non_progression_item_except_relics()
+      sleeve_chest = game.get_entity_by_id("02-00-04-07")
+      sleeve_chest.var_a = pickup_id + 1
+      #pickup flag is already handled elsewhere
     end
   end
 
@@ -800,22 +809,9 @@ class PickupRandomizer
   def change_entity_location_to_pickup_id(location, pickup_id, pickup_name = nil)
     if @options[:rv_arthrovertas_revenge]
       if location[:id][0..7] == game.arthroverta.boss_room_id
-        if location[:id][9..10] == "00"
-          location[:id] = game.arthroverta.boss_room_id + "_" + game.arthroverta.boss_loc
-        elsif location[:id][9..10] == "01"
-          location[:id] = game.arthroverta.boss_room_id + "_" + game.arthroverta.magnes_loc
-        elsif location[:id][9..10] == "02"
-          if game.arthroverta.skip_hider
-            #Do nothing
-          elsif game.arthroverta.skip_door
-            location[:id] = game.arthroverta.boss_room_id + "_" + game.arthroverta.hider_loc
-          else
-            location[:id] = game.arthroverta.boss_room_id + "_" + game.arthroverta.door_loc
-          end
-        elsif location[:id][9..10] == "03"
-          if not game.arthroverta.skip_door
-            location[:id] = game.arthroverta.boss_room_id + "_" + game.arthroverta.hider_loc
-          end
+        new_loc = game.arthroverta.get_replacement_loc(location[:id][9..10])
+        if not new_loc.nil?
+          location[:id] = game.arthroverta.boss_room_id + "_" + new_loc
         end
       end
     end
@@ -1011,10 +1007,12 @@ class PickupRandomizer
   end
 
   def pre_rando_tweaks()
-    # Since the glyph sleeve location will be randomized, here we'll unlock the one that appears for free in hard mode in Ecclesia.
-    # In normal mode this is hidden by an entity hider object, so we'll nullify it.
-    entity_hider = game.get_entity_by_id("02-00-04-06")
-    entity_hider.type = 0
+    if !options[:rv_trick_sleeve]
+      # Since the glyph sleeve location will be randomized, here we'll unlock the one that appears for free in hard mode in Ecclesia.
+      # In normal mode this is hidden by an entity hider object, so we'll nullify it.
+      entity_hider = game.get_entity_by_id("02-00-04-06")
+      entity_hider.type = 0
+    end
     # But we also need to give the chest a unique flag, because it shares the flag with the one from Minera in normal mode.
     sleeve_chest = game.get_entity_by_id("02-00-04-07")
     pickup_flag = get_unused_pickup_flag()
