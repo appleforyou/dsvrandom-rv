@@ -5,16 +5,14 @@ require_relative 'ooe_logic'
 
   def self.set_logic(obj)
     @logic = obj
-    hp_max_up = self.locs.select {|loc| loc[:name] == "HP Max Up"}
-    mp_max_up = self.locs.select {|loc| loc[:name] == "MP Max Up"}
-    heart_max_up = self.locs.select {|loc| loc[:name] == "HEART Max Up"}
-    money500 = self.locs.select {|loc| loc[:name] == "$500"}
-    money1000 = self.locs.select {|loc| loc[:name] == "$1000"}
-    money2000 = self.locs.select {|loc| loc[:name] == "$2000"}
   end
 
   def self.locs
-    @locs ||= [
+    @@locs
+  end
+
+  def self.set_locs
+    @@locs = [
     #Dracula's Castle
     #Castle Entrance
       {
@@ -690,6 +688,15 @@ require_relative 'ooe_logic'
         type: ["Item", "Other"],
         container: "Secret",
         id: "02-00-04_05",
+        room: "Ecclesia (Hub)",
+        available: lambda { return true }
+      },
+      {
+        zone: "Ecclesia",
+        name: "Glyph Sleeve",
+        type: ["Item", "Relic"],
+        container: "Chest",
+        id: "02-00-04_07",
         room: "Ecclesia (Hub)",
         available: lambda { return true }
       },
