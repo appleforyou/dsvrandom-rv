@@ -182,7 +182,7 @@ class Entity
     is_special_object and subtype == 0x89
   end
 
-  #def entity_str
-    #@entity_str ||= "#{room.room_str}_%02X" % room.entities.index(self)
-  #end
+  def entity_str
+    @entity_str ||= "#{room.room_str}_%02X" % room.entities.index(self)
+  end
 end
