@@ -268,7 +268,6 @@ class RandomizerWindow < Qt::Dialog
       end
     end
     @ui.rv_open_castle.setEnabled(false)
-    @ui.rv_non_vanilla_glyphs.setEnabled(false)
     if (not @ui.rv_unlock_albus.checked) and @ui.rv_hint_cat_locations.currentIndex() == 2
       @ui.rv_hint_cat_locations.setCurrentIndex(1)
     end
