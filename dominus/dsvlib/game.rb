@@ -418,17 +418,17 @@ class Game
                        #door_x: 0x0,
                        #door_y: 0x140
                       #},
-        "0A-01-02" => {
-                       boss_loc: nil,
-                       skip_magnes: true,
-                       door_loc: nil,
-                       skip_hider: true,
-                       boss_x: 0x280,
-                       boss_y: 0xb0,
-                       door_x: 0x2e0,
-                       door_y: 0x80,
-                       preserve_locs: [0,1,2,3,4,5]
-                      },
+        #"0A-01-02" => { needs a logic update because this is unreasonable if non-machina transformations are the spike skipper
+                       #boss_loc: nil,
+                       #skip_magnes: true,
+                       #door_loc: nil,
+                       #skip_hider: true,
+                       #boss_x: 0x280,
+                       #boss_y: 0xb0,
+                       #door_x: 0x2e0,
+                       #door_y: 0x80,
+                       #preserve_locs: [0,1,2,3,4,5]
+                      #},
         #"0A-01-06" => { good if the player could not come in from the right side door
                        #boss_loc: nil,
                        #magnes_loc: nil,
