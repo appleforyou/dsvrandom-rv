@@ -51,7 +51,7 @@ class PickupRandomizer
     checker.add_item("Glyph Union")
     checker.add_item("Torpor")
 
-    if !options[:rv_trick_sleeve]
+    if !@options[:rv_trick_sleeve]
       checker.add_item("Glyph Sleeve")
     end
 
@@ -537,7 +537,7 @@ class PickupRandomizer
       change_entity_location_to_pickup_id(loc, pickup_id)
     end
     #Also set the hard mode Glyph Sleeve chest if Trick Sleeve is enabled
-    if options[:rv_trick_sleeve]
+    if @options[:rv_trick_sleeve]
       pickup_id = checker.get_unplaced_non_progression_item_except_relics()
       sleeve_chest = game.get_entity_by_id("02-00-04-07")
       sleeve_chest.var_a = pickup_id + 1
@@ -1007,7 +1007,7 @@ class PickupRandomizer
   end
 
   def pre_rando_tweaks()
-    if !options[:rv_trick_sleeve]
+    if !@options[:rv_trick_sleeve]
       # Since the glyph sleeve location will be randomized, here we'll unlock the one that appears for free in hard mode in Ecclesia.
       # In normal mode this is hidden by an entity hider object, so we'll nullify it.
       entity_hider = game.get_entity_by_id("02-00-04-06")
