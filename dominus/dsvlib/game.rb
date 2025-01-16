@@ -57,6 +57,11 @@ class Game
       if @options[:rv_arthrovertas_revenge]
         @arthroverta = Arthroverta.new(self, rng)
       end
+      if @options[:rv_trick_sleeve]
+        tweaks.normalize_glyph_sleeve()
+        trick_sleeve = [:drain_sleeve, :shift_sleeve, :tooth_sleeve].sample(random: rng)
+        tweaks.method(trick_sleeve)[]
+      end
     end
     yield 5
 
@@ -176,30 +181,73 @@ class Game
                 :hider_loc,
                 :door_loc,
                 :magnes_loc,
+                :skip_magnes,
                 :skip_door,
                 :skip_hider
 
+    def take_slot(boss_room, replacement_loc)
+      #Sometimes we want to keep an entity where it is in the list so it doesn't get hidden.
+      while (not boss_room[:preserve_locs].nil?) and boss_room[:preserve_locs].include?(@current_slot)
+        @current_slot += 1
+      end
+      @replacement_locs[@current_slot] = replacement_loc
+      target_entity = @game.get_entity_by_id(@boss_room_id + "_0" + @current_slot.to_s)
+      @current_slot += 1
+      return target_entity
+    end
+
     def initialize(game, rng)
+      @game = game
       @boss_room_id = possible_rooms.keys.sample(random: rng)
       boss_room = possible_rooms[boss_room_id]
       @boss_loc = boss_room[:boss_loc]
       @door_loc = boss_room[:door_loc]
       @hider_loc = boss_room[:hider_loc]
       @magnes_loc = boss_room[:magnes_loc]
-      @skip_door = boss_room[:skip_door]
-      @skip_hider = boss_room[:skip_hider]
-      arthroverta = game.get_entity_by_id(boss_room_id + "_00")
-      magnes = game.get_entity_by_id(boss_room_id + "_01")
-      door = @skip_door ? nil : game.get_entity_by_id(boss_room_id + "_02")
-      if @skip_hider
+      @second_door_loc = boss_room[:second_door_loc]
+      target_room = game.get_entity_by_id(@boss_room_id + "_00").room
+      #Rooms usually have space for one extra entity unless they have one short of a multiple of 4 (3, 7, etc.)
+      if (target_room.entities.size % 4 != 3) and not (boss_room[:use_extra_space] == false)
+        target_room.add_entity()
+      end
+      #Delete the original boss and its boss doors
+      game.get_entity_by_id("12-00-13_00").type = 0
+      game.get_entity_by_id("12-00-10_01").type = 0
+      game.get_entity_by_id("12-00-13_04").type = 0
+      game.get_entity_by_id("12-00-13_05").type = 0
+      @replacement_locs = {}
+      @current_slot = 0
+      arthroverta = take_slot(boss_room, @boss_loc)
+      if boss_room[:skip_magnes]
+        magnes = nil
+      else
+        magnes = take_slot(boss_room, @magnes_loc)
+      end
+      if boss_room[:skip_door]
+        door = nil
+      else
+        door = take_slot(boss_room, @door_loc)
+      end
+      #second door is rare so assume it's missing
+      if not boss_room[:make_second_door]
+        second_door = nil
+      else
+        second_door = take_slot(boss_room, @second_door_loc)
+      end
+      if boss_room[:skip_hider]
         hider = nil
       else
-        hider = @skip_door ? game.get_entity_by_id(boss_room_id + "_02") : game.get_entity_by_id(boss_room_id + "_03")
+        hider = take_slot(boss_room, @hider_loc)
       end
       game.get_entity_by_id(boss_room_id + "_" + boss_loc).copy_data(arthroverta.entity_pointer) if not @boss_loc.nil?
-      game.get_entity_by_id(boss_room_id + "_" + magnes_loc).copy_data(magnes.entity_pointer) if not @magnes_loc.nil?
+      if not magnes.nil?
+        game.get_entity_by_id(boss_room_id + "_" + magnes_loc).copy_data(magnes.entity_pointer) if not @magnes_loc.nil?
+      end
       if not door.nil?
         game.get_entity_by_id(boss_room_id + "_" + door_loc).copy_data(door.entity_pointer) if not @door_loc.nil?
+      end
+      if not second_door.nil?
+        game.get_entity_by_id(boss_room_id + "_" + @second_door_loc).copy_data(second_door.entity_pointer) if not @second_door_loc.nil?
       end
       if not hider.nil?
         game.get_entity_by_id(boss_room_id + "_" + hider_loc).copy_data(hider.entity_pointer) if not @hider_loc.nil?
@@ -227,6 +275,14 @@ class Game
         door.var_a = 1
         door.var_b = 1
       end
+      if not second_door.nil?
+        second_door.x_pos = boss_room[:second_door_x]
+        second_door.y_pos = boss_room[:second_door_y]
+        second_door.type = 2
+        second_door.subtype = 0x4b
+        second_door.var_a = 1
+        second_door.var_b = 1
+      end
       if not magnes.nil?
         if boss_room[:magnes_x].nil?
           magnes.x_pos = arthroverta.x_pos - 0x60
@@ -239,6 +295,14 @@ class Game
         magnes.var_a = 0
         magnes.var_b = 0
       end
+
+      #Boss rush will softlock with no Arthroverta in its room. There's nothing stopping two of the same boss from existing, but if I can fix it without two bosses I will.
+      #Rough bandaid fix that auto-unlocks the teleporter until I have time to check how to change the boss rush room
+      game.tweaks.fix_bossrush_arthroverta()
+    end
+
+    def get_replacement_loc(old_loc)
+      return @replacement_locs[old_loc.to_i]
     end
 
     def possible_rooms
@@ -246,9 +310,9 @@ class Game
       possible_rooms = {
         "12-00-08" => {
                        boss_loc: "02",
+                       magnes_loc: nil,
                        door_loc: nil,
                        skip_door: true,
-                       magnes_loc: nil,
                        hider_loc: nil,
                        skip_hider: true,
                        boss_x: 0x110,
@@ -256,58 +320,173 @@ class Game
                        magnes_x: 0x190
                       },
         "12-00-09" => {
-                       boss_loc: "04",
-                       door_loc: "05",
-                       magnes_loc: nil,
+                       boss_loc: "05",
+                       magnes_loc: "09",
+                       door_loc: nil,
                        hider_loc: nil,
                        boss_x: 0x390,
                        boss_y: 0xb0,
                        door_x: 0x3e0,
                        door_y: 0x80,
-                       magnes_x: 0x200
+                       magnes_x: 0x200,
+                       preserve_locs: [1]
                       },
         "12-00-0B" => {
                        boss_loc: "04",
+                       magnes_loc: "05",
                        door_loc: nil,
                        skip_door: true,
-                       magnes_loc: "05",
-                       hider_loc: nil,
+                       hider_loc: "06",
                        boss_x: 0x70,
                        boss_y: 0xb0,
-                       magnes_x: 0xf0
+                       magnes_x: 0xf0,
+                       preserve_locs: [1]
                       },
         "12-00-0C" => {
-                       boss_loc: "04",
-                       door_loc: nil,
-                       magnes_loc: nil,
-                       hider_loc: "05",
+                       boss_loc: nil,
+                       door_loc: "06",
+                       magnes_loc: "05",
+                       hider_loc: nil,
                        boss_x: 0x190,
                        boss_y: 0xb0,
                        door_x: 0x1e0,
-                       door_y: 0x80
+                       door_y: 0x80,
+                       preserve_locs: [0]
                       },
-        #"06-00-18" => {
-                       #boss_loc: "05",
-                       #door_loc: nil,
-                       #skip_door: true,
-                       #magnes_loc: "03",
+        #"06-00-17" => { can't roll well, can sneak behind, web is awkward, otherwise almost good enough
+                       #boss_loc: "03",
+                       #door_loc: "04",
                        #skip_magnes: true,
-                       #hider_loc: nil,
-                       #boss_x: 0x50,
-                       #boss_y: 0xb0
-                      #},
-        #"07-00-12" => {
-                       #boss_loc: nil,
-                       #door_loc: nil,
-                       #magnes_loc: "04",
-                       #skip_magnes: true,
-                       #hider_loc: nil,
-                       #boss_x: 0x280,
-                       #boss_y: 0x160,
-                       #door_x: 0x2f0,
+                       #hider_loc: "05",
+                       #boss_x: 0xa0,
+                       #boss_y: 0x230,
+                       #door_x: 0x0,
                        #door_y: 0x80
                       #},
-        #"07-00-14"?
+        "06-00-18" => {
+                       boss_loc: "05",
+                       door_loc: nil,
+                       skip_door: true,
+                       magnes_loc: nil,
+                       skip_magnes: true,
+                       hider_loc: "06",
+                       boss_x: 0x50,
+                       boss_y: 0xb0
+                      },
+        "06-00-1A" => {
+                       boss_loc: "04",
+                       door_loc: "05",
+                       skip_magnes: true,
+                       make_second_door: true,
+                       second_door_loc: "0B",
+                       hider_loc: "0D",
+                       boss_x: 0x280,
+                       boss_y: 0x160,
+                       door_x: 0x2f0,
+                       door_y: 0x80,
+                       second_door_x: 0x2f0,
+                       second_door_y: 0x140
+                       },
+        "07-00-12" => {
+                       boss_loc: "04",
+                       door_loc: "05",
+                       skip_magnes: true,
+                       hider_loc: nil,
+                       boss_x: 0x280,
+                       boss_y: 0x160,
+                       door_x: 0x2f0,
+                       door_y: 0x80,
+                       preserve_locs: [2]
+                      },
+        "09-00-01" => {
+                       boss_loc: nil,
+                       door_loc: nil,
+                       skip_magnes: true,
+                       skip_hider: true,
+                       boss_x: 0x90,
+                       boss_y: 0xa0,
+                       door_x: 0xf0,
+                       door_y: 0x80
+                      },
+        #"0A-00-02" => { almost good enough, but the boss can't roll far enough to hit the player at melee range
+                       #boss_loc: "04",
+                       #skip_magnes: true,
+                       #door_loc: "05",
+                       #hider_loc: nil,
+                       #boss_x: 0x40,
+                       #boss_y: 0x150,
+                       #door_x: 0x0,
+                       #door_y: 0x140
+                      #},
+        "0A-01-02" => {
+                       boss_loc: nil,
+                       skip_magnes: true,
+                       door_loc: nil,
+                       skip_hider: true,
+                       boss_x: 0x280,
+                       boss_y: 0xb0,
+                       door_x: 0x2e0,
+                       door_y: 0x80,
+                       preserve_locs: [0,1,2,3,4,5]
+                      },
+        #"0A-01-06" => { good if the player could not come in from the right side door
+                       #boss_loc: nil,
+                       #magnes_loc: nil,
+                       #door_loc: nil,
+                       #make_second_door: true,
+                       #second_door_loc: nil,
+                       #hider_loc: nil,
+                       #boss_x: 0x180,
+                       #boss_y: 0xb0,
+                       #magnes_x: 0x1c0,
+                       #door_x: 0x10,
+                       #door_y: 0x80,
+                       #second_door_x: 0x2e0,
+                      # second_door_y: 0x80,
+                      #},
+        "0B-01-00" => {
+                       boss_loc: "07",
+                       magnes_loc: "04",
+                       door_loc: "06",
+                       hider_loc: nil,
+                       boss_x: 0x40,
+                       boss_y: 0xb0,
+                       magnes_x: 0x200,
+                       door_x: 0x10,
+                       door_y: 0x80
+                      },
+        "0B-01-06" => {
+                       boss_loc: "04",
+                       skip_magnes: true,
+                       door_loc: nil,
+                       make_second_door: true,
+                       second_door_loc: nil,
+                       hider_loc: nil,
+                       boss_x: 0x40,
+                       boss_y: 0xb0,
+                       door_x: 0x10,
+                       door_y: 0x80,
+                       second_door_x: 0x1e0,
+                       second_door_y: 0x80
+                      },
+        #"0F-00-05" => { roll can almost hit, might add later
+                       #boss_loc: "04",
+                       #skip_magnes: true,
+                       #door_loc: "06",
+                       #hider_loc: "08",
+                       #boss_x: 0x40,
+                       #boss_y: 0x150,
+                       #door_x: 0x10,
+                       #door_y: 0x80
+                      #},
+        #"0F-00-04" => { ceiling too low. probably added later in do your worst
+                       #boss_loc: "05",
+                       #magnes_loc: "07",
+                       #skip_door: true,
+                       #hider_loc: "0A",
+                       #boss_x: 0x360,
+                       #boss_y: 0x90,
+                      #},
       }
     end
   end
