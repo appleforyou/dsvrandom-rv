@@ -74,7 +74,7 @@ class PickupRandomizer
     end
 
     if !checker.game_beatable?
-      raise "Bug: Game is not beatable on this seed!\nThis error shouldn't happen.\nSeed: #{@seed}\n\nItems:\n#{checker.current_items.join(", ")}"
+      raise "Bug: Game is not beatable on this seed!\nThis error shouldn't happen.\nSeed: #{@seed}\n\nItems:\n#{checker.current_items.to_a.join(", ")}"
     end
   end
 
