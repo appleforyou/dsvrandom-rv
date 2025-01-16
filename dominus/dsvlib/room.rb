@@ -182,4 +182,19 @@ class Room
       i += 12
     end
   end
+
+  def add_entity()
+    entity = Entity.new(self, entity_list_pointer + entities.size*12, alldata)
+    #Setting the position bytes here clears the marker that the game has reached the end of the entity list.
+    entity.x_pos = 0
+    entity.y_pos = 0
+    entities << entity
+    #entities.size now includes the new entity. Add the marker after the new end of the entity list.
+    alldata[entity_list_pointer + (entities.size)*12] = [0xff,0x7f,0xff,0x7f]
+    return entity
+  end
+
+  def room_str
+    @room_str ||= "%02X-%02X-%02X" % [area_index, sector_index, room_index]
+  end
 end
