@@ -90,7 +90,6 @@ class Ui_Randomizer
     attr_reader :rv_difficulty
     attr_reader :rv_open_castle
     attr_reader :rv_unlock_albus
-    attr_reader :rv_non_vanilla_glyphs
     attr_reader :rv_unlock_cerberus
     attr_reader :rv_split_pools
     attr_reader :rv_puzzle_progression
@@ -107,6 +106,7 @@ class Ui_Randomizer
     attr_reader :lock_backup
     attr_reader :rv_arthrovertas_revenge
     attr_reader :rv_hint_cat_locations
+    attr_reader :rv_trick_sleeve
     attr_reader :reveal_enemy_info
     attr_reader :version_selector
     attr_reader :version_label
@@ -517,12 +517,11 @@ class Ui_Randomizer
 
     @gridLayout_10.addWidget(@reveal_enemy_info, 1, 0, 1, 1)
 
-    @rv_non_vanilla_glyphs = Qt::CheckBox.new(@groupBox_7)
-    @rv_non_vanilla_glyphs.objectName = "rv_non_vanilla_glyphs"
-    @rv_non_vanilla_glyphs.checked = false
-    @rv_non_vanilla_glyphs.enabled = false
+    @rv_trick_sleeve = Qt::CheckBox.new(@groupBox_7)
+    @rv_trick_sleeve.objectName = "rv_trick_sleeve"
+    @rv_trick_sleeve.checked = false
 
-    @gridLayout_10.addWidget(@rv_non_vanilla_glyphs, 0, 1, 1, 1)
+    @gridLayout_10.addWidget(@rv_trick_sleeve, 0, 1, 1, 1)
 
     @rv_hint_cat_label = Qt::Label.new(@tab_3)
     @rv_hint_cat_label.objectName = "rv_hint_cat_label"
@@ -621,6 +620,10 @@ class Ui_Randomizer
     @gear_label.objectName = "gear_label"
     @gear_label.wordWrap = true
 
+    @sleeve_label = Qt::Label.new(@tab_5)
+    @sleeve_label.objectName = "sleeve_label"
+    @sleeve_label.wordWrap = true
+
 
     @test_box.addItem(@patches_label, "About patches")
     @test_box.addItem(@modded_label, "About pre-modded game files")
@@ -631,6 +634,7 @@ class Ui_Randomizer
     @test_box.addItem(@worst_label, "Do Your Worst")
 
     @test_box.addItem(@gear_label, "Gear Level and Equipment Tiers")
+    @test_box.addItem(@sleeve_label, "Trick Sleeve")
 
     @verticalLayout_8.addWidget(@test_box)
 
@@ -743,12 +747,12 @@ class Ui_Randomizer
 
     @rv_open_castle.text = Qt::Application.translate("Randomizer", "Open World Map + Dracula's Castle", nil, Qt::Application::UnicodeUTF8)
     @rv_unlock_albus.text = Qt::Application.translate("Randomizer", "Unlock Albus/Barlowe", nil, Qt::Application::UnicodeUTF8)
-    @rv_non_vanilla_glyphs.text = Qt::Application.translate("Randomizer", "Not implemented yet", nil, Qt::Application::UnicodeUTF8)
     @rv_unlock_cerberus.text = Qt::Application.translate("Randomizer", "Unlock Cerberus Gate", nil, Qt::Application::UnicodeUTF8)
     @rv_split_pools.text = Qt::Application.translate("Randomizer", "Split pools for item/glyph locations", nil, Qt::Application::UnicodeUTF8)
     @rv_puzzle_progression.text = Qt::Application.translate("Randomizer", "Allow progression glyphs at Cubus/Morbus", nil, Qt::Application::UnicodeUTF8)
     @rv_randomize_quest_rewards.text = Qt::Application.translate("Randomizer", "Quest Reward Items", nil, Qt::Application::UnicodeUTF8)
     @rv_arthrovertas_revenge.text = Qt::Application.translate("Randomizer", "Arthroverta's Revenge", nil, Qt::Application::UnicodeUTF8)
+    @rv_trick_sleeve.text = Qt::Application.translate("Randomizer", "Trick Sleeve", nil, Qt::Application::UnicodeUTF8)
     @reveal_enemy_info.text = Qt::Application.translate("Randomizer", "Reveal Enemy Info", nil, Qt::Application::UnicodeUTF8)
     @patch_label.text = Qt::Application.translate("Randomizer", "Patch Folder", nil, Qt::Application::UnicodeUTF8)
     @patch_folder_browse_button.text = Qt::Application.translate("Randomizer", "Browse", nil, Qt::Application::UnicodeUTF8)
@@ -828,6 +832,7 @@ class Ui_Randomizer
     @creative_label.text = Qt::Application.translate("Randomizer", "Creative difficulty opens up the toolset to allow a number of different ways to cross obstacles beyond what may be immediately obvious. If you aren't sure how to proceed, here are some things that may be required:\n- Arma Machina can break spikes\n- Arma Felix and Arma Chiroptera have invincibility on some attacks which can be used to cross spikes\n- Arma Felix has a pouncing attack that can provide extra momentum to cross gaps. Moonwalkers/Mercury Boots/Winged Boots can be used in a similar way.\n- Divekick off the breakable ledge in Minera Prison Island to proceed without Magnes.\n\nAs for combat logic, the Creative preset assumes you are playing for speed and will try to avoid enemies instead of fighting them. As a result, areas with denser enemies will be rated as more difficult than ones that are easier to avoid, even if they are later in the game. Some of the boss requirements are relaxed compared to vanilla, but some don't change much.\nExamples:\n\nTymeo Mountains has no gear requirement.\nMystery Manor requires Gear Level 8.\nAlbus requires Gear Level 12 and a Slash or Dark glyph.\nCastle Library requires Gear Level 6.\nFinal Approach requires Gear Level 20.\n\nOverall this preset should be most comfortable for people who want variety from their randomizer seed, and due to some complicated factors, it's also the fastest preset on average! I recommend it as it's the closest preset to well-tuned at the moment.", nil, Qt::Application::UnicodeUTF8)
     @worst_label.text = Qt::Application.translate("Randomizer", "Do Your Worst difficulty does what it says on the tin. All known non-glitched ways of proceeding through the game will be used by the randomizer logic and can be required of you. If you're a master of the game, you can handle it. This may involve making very precise backdash jumps, or divekicking off of moving enemies to reach pickup locations.\n\nThe gear considerations present in the other presets are basically completely absent here! You may be asked to do some long or difficult boss fights, or hoard healing items to traverse hazards.\n\nThis preset is for people who consider themselvers a veteran of the game and want to give the randomizer the opportunity to challenge them, although it's up to RNG whether it actually chooses to do so.", nil, Qt::Application::UnicodeUTF8)
     @gear_label.text = Qt::Application.translate("Randomizer", "Presets other than Do Your Worst will calculate an estimated Gear Level for the equipment placed in the seed thus far to determine whether you can reasonably traverse an area or defeat a boss. This calculation is still unfinished and quite vague, but should be better than nothing.\n\nThe way it works is each equipment has an assigned Tier, and the best available Tier in each equipment slot is added up to your total Gear Level.\n\nThe best tier is currently Tier 5, which includes only Queen of Hearts, Death Ring, and Judgement Ring.\nAn example of a Tier 4 item is Minerva Mail.\nAn example of a Tier 3 item is Strength Ring.\nAn example of a Tier 2 item is Party Dress.\nAn example of a Tier 1 item is Babushka.\nAnd Tier 0, the lowest, has items like Sandals or Gold Ring.\n\nIf you have 5 level 3 items, that makes Gear Level 15.\nBy the way, only equipment is tiered currently! The rest, including glyphs, is not.", nil, Qt::Application::UnicodeUTF8)
+    @sleeve_label.text = Qt::Application.translate("Randomizer", "Selecting the Trick Sleeve option will first make the Glyph Sleeve function available from the first moment of the game without picking up any items.\n\nIn addition, it will make the old Glyph Sleeve relic into a new item chosen randomly from a number of options. Each is designed to change some sort of minor \"rule\" of the game in some way, so you might think of it as a \"rule randomizer\" which might change your choices mid-run when you find the relic.\nThis option is currently new and there are only a few options available:\n\nShift Sleeve: Gives you access to High Jump (up+backdash) on any glyph page which has Volaticus set. Also turns your backdash into a forward dash if you have glyph page A selected.\nTooth Sleeve: If you have glyph page C selected, you can now eat any item in your item page. It will either heal you, damage you like a spoiled food item, or restore hearts, from common to rare. This also overwrites an item's original on-use effect, so switch to page A or B if you want the original effect. Be careful not to eat anything you'll miss...\nDrain Sleeve: Glyph page A is immune to curse and poison. Page B auto-curses itself, but in exchange it has half MP costs and drains hearts from the enemy every time it deals damage. Page C auto-poisons itself, which causes damage and debuffs your STR stat, but in exchange it gains 10 INT and MND.\n\nDetails are subject to change, as this option is still quite experimental.\nAlso, remember that you can always unequip a relic from the pause screen if it doesn't suit your needs.", nil, Qt::Application::UnicodeUTF8)
     end # retranslateUi
 
     def retranslate_ui(randomizer)
