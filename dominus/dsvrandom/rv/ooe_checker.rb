@@ -35,6 +35,8 @@ require 'set'
     @rng = rng
     @logic = OoELogic.new(self, options)
     Locations.set_logic(@logic)
+    Locations.set_locs()
+    OoEItems.set_items()
     @all_spacer_glyphs = {}
     @current_items = [].to_set
     @gear_level = 0
@@ -62,9 +64,7 @@ require 'set'
     add_extra_item("$1000", "Money", :money, 3)
     add_extra_item("$2000", "Money", :money, 6)
     @all_pickups = OoEItems.items
-    if !options[:rv_non_vanilla_glyphs]
-      @all_pickups.delete("Cat Tackle")
-    end
+    @all_pickups.delete("Cat Tackle")
     @all_progression_pickups = @all_pickups.select {|key, item| item[:progression]}
     #if !options[:rv_puzzle_progression]
       @all_progression_pickups.delete("Fulgur")
