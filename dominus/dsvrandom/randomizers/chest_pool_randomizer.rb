@@ -80,12 +80,19 @@ class ChestPoolRandomizer
     weighted_items = items.keys.zip(ps).to_h
     ordered_items = weighted_items.sort_by{|_, w| rng.rand ** (1.0 / w)}.map{|k, v| k}
 
+    # Then do the rest in the order they're listed in the game files (mostly in vanilla order)
     @wooden_chest_item_pools.reverse_each do |pool|
       next if pool.pool_id == 0x15 # Skip rare pool A, which is never used
+      next if pool.pool_id == 0xa # Skip common pool A because it will be handled later
       (0..3).each do |i|
         item_id = items[ordered_items.pop()][:id] + 1
         pool[i] = item_id
       end
+    end
+    # Lastly handle Wygol Village, which is the last common pool in the files and therefore would have higher priority than it should.
+    @wooden_chest_item_pools[0xa].item_ids.each_with_index do |slot, i|
+      item_id = items[ordered_items.pop()][:id] + 1
+      @wooden_chest_item_pools[0xa][i] = item_id
     end
   end
 end
