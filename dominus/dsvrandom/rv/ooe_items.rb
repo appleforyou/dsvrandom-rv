@@ -12,7 +12,27 @@ def self.items
 end
 
 def self.glyphs
- @glyphs ||= {
+  return @@glyphs
+end
+
+def self.equipment
+  return @@equipment
+end
+
+def self.consumables
+  return @@consumables
+end
+
+def self.materials
+  return @@materials
+end
+
+def self.relics
+  return @@relics
+end
+
+def self.set_items
+  @@glyphs = {
   "Confodere" => {
     name: "Confodere",
     type: "Damaging",
@@ -458,10 +478,8 @@ def self.glyphs
     id: 0x4d
   }
 }
-end
 
-def self.equipment
- @equipment ||= {
+  @@equipment = {
   "Casual Clothes" => {
     name: "Casual Clothes",
     type: "Body",
@@ -1406,10 +1424,8 @@ def self.equipment
     tier: 0
   },
 }
-end
 
-def self.consumables
- @consumables ||= {
+  @@consumables = {
   "Potion" => {
     name: "Potion",
     type: "Health",
@@ -1717,10 +1733,8 @@ def self.consumables
     price: 3000
   }
 }
-end
 
-def self.relics
- relics = {
+  @@relics = {
   "Ordinary Rock" => {
     name: "Ordinary Rock",
     type: "Relic",
@@ -1749,7 +1763,7 @@ def self.relics
     name: "Glyph Sleeve",
     type: "Relic",
     id: 0x73,
-    start_with: true
+    start_with: false
   },
   "Glyph Union" => {
     name: "Glyph Union",
@@ -1758,10 +1772,8 @@ def self.relics
     start_with: true
   }
   }
-end
 
-def self.materials
-  @materials ||= {
+  @@materials = {
   "Mouse" => {
     name: "Mouse",
     type: "Quest",
@@ -2006,22 +2018,23 @@ def self.materials
     id: 0xd6
   },
   }
+
+  @@undroppables = @@relics.dup
+  @@shoppables = @@consumables.merge(@@materials).merge(@@equipment).delete_if {|k, v| not v.has_key?(:price)}
+  @@total_items = @@glyphs.merge(@@equipment).merge(@@relics).merge(@@consumables).merge(@@materials)
 end
 
 def self.undroppables
   return @@undroppables
 end
 
+def self.shoppables
+  return @@shoppables
+end
+
 def self.extra_item(k, v)
   @@total_items[k] = v
   @@undroppables[k] = v
 end
-
-def self.shoppables
-  @shoppables ||= consumables.merge(materials).merge(equipment).delete_if {|k, v| not v.has_key?(:price)}
-end
-
-@@total_items = self.glyphs.merge(equipment).merge(relics).merge(consumables).merge(materials)
-@@undroppables = self.relics
 
 end
