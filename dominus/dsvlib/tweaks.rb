@@ -70,9 +70,9 @@ class Tweaks
     #Modifying Dominus Hatred cutscene glyph
     #unskipped cutscene version uses shared code for both, which adds 1 to Dominus Hatred's glyph id if you are in the Anger cutscene.
     @dra03[0x149855] = hatred_glyph
-    #jumping to unused memory to calculate this differently
-    @dra03[0x149844] = jump(0x149844,@freestart+0x30) + nop(1) #size 6. CALL 0x18028f100; NOP
-    @dra03[@freestart+0x30] = [0x8d,0x50,0x1f,0x74,0x03,0x8d,0x58,anger_glyph-hatred_glyph,0xc3] #size 9. LEA EDX,[RAX + 0x1f]; JE 0x18028f108; LEA EBX,[RAX+(anger_glyph-hatred_glyph)]; RET
+    #jumping nearby to calculate this differently
+    @dra03[0x149844] = jump(0x149844,0x1498e5) + nop(1) #size 6. CALL 0x18014a4e5; NOP
+    @dra03[0x1498e5] = [0x8d,0x50,0x1f,0x74,0x03,0x8d,0x58,anger_glyph-hatred_glyph,0xc3] + nop(1) #size 9. LEA EDX,[RAX + 0x1f]; JE 0x18028f108; LEA EBX,[RAX+(anger_glyph-hatred_glyph)]; RET
 
     #skipped cutscene version has separate code per glyph
     [0x69,0x6F].each do |subtype|
@@ -245,8 +245,8 @@ class Tweaks
     unlockvillagers = [0x81,0x0d] + relative_address(@freestart+7,0x8cf024,10) + [0x00,0x24,0x04,0x11] + \
                       [0x81,0x0d] + relative_address(@freestart+17,0x8cf028,10) + [0x81,0x88,0x88,0x00] #size 20. OR dword ptr [0x1808cf024],0x11042400; OR dword ptr [0x1808cf028],0x888881
     finishvillagers = [0xb8,0x01,0x00,0x00,0x00,0xc3] #size 6. MOV EAX,0x1; RET
-    albusmemories = [0x81,0x25] + relative_address(@freestart+0x50,0x8cf020,10) + [0xff,0xff,0xff,0xfd] + \
-                    @dra03[0x26c11d,1,6] + jump(@freestart+0x50+16,0x26c123,:JMP) #size 21. AND dword ptr [0x1808cf020],0x-02000000; (original code); JMP 0x18026cd23
+    albusmemories = [0x81,0x25] + relative_address(@freestart+0x30,0x8cf020,10) + [0xff,0xff,0xff,0xfd] + \
+                    @dra03[0x26c11d,1,6] + jump(@freestart+0x30+16,0x26c123,:JMP) #size 21. AND dword ptr [0x1808cf020],0x-02000000; (original code); JMP 0x18026cd23
     cerberus = @options[:rv_unlock_cerberus] ? ([0x83,0x0d] + relative_address(0x11f76a+14,0x8cf010,7) + [0x40]) : ([0xeb,0x09] + nop(5)) #size 7. OR dword ptr [0x1808cf010],0x40 --- Alternately jump to next code
 
     #open the world map
@@ -257,8 +257,8 @@ class Tweaks
       @dra03[@freestart] = unlockalbus + unlockvillagers + finishvillagers + nop(1) #size 34
 
       #fix flashbang on defeating albus
-      @dra03[0x26c11d] = jump(0x26c11d,@freestart+0x50, :JMP) + nop(1) #size 5 (6 total). JMP 0x18028f120
-      @dra03[@freestart+0x50] = albusmemories + nop(1) #size 22
+      @dra03[0x26c11d] = jump(0x26c11d,@freestart+0x30, :JMP) + nop(1) #size 5 (6 total). JMP 0x18028f120
+      @dra03[@freestart+0x30] = albusmemories + nop(1) #size 22
     end
 
     #make Nikolai always spawn in Wygol Village even if you haven't gone to Monastery
@@ -329,6 +329,249 @@ class Tweaks
     if @options[:reveal_enemy_info]
       reveal_bestiary()
     end
+  end
+
+  def normalize_glyph_sleeve()
+    #Make Glyph Sleeve unnecessary.
+    #Some aspects of this change require nulling out two lines, one for having the item and one for it being equipped.
+    #In-battle glyph swapping
+    @dra03[0xec853] = nop(6)
+    @dra03[0xec85c] = nop(6)
+    #In-battle glyph page icons
+    @dra03[0xa5229] = nop(6)
+    #Second screen glyph page icons
+    @dra03[0x21971d] = nop(2)
+    @dra03[0x219722] = nop(2)
+    #Glyph menu (paused)
+    #Swap pages in glyph menu
+    @dra03[0x1e5cf3] = nop(2)
+    #Glyph menu icons
+    @dra03[0x1e64e2] = nop(6)
+    @dra03[0x1e64eb] = nop(6)
+    @dra03[0x1e6525] = nop(6)
+    @dra03[0x1e652e] = nop(6)
+    #Glyph menu button icons next to glyph names
+    @dra03[0x6610e] = nop(6)
+    @dra03[0x66117] = nop(2)
+    @dra03[0x1e66ee] = nop(6)
+    @dra03[0x1e6700] = nop(6)
+    @dra03[0x1e517b] = nop(6)
+    @dra03[0x1e5184] = nop(6)
+  end
+
+  def drain_sleeve
+    #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. Leaves the result in the zero flag.
+    @sleeveteststart = @freestart + 0x50
+    sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
+                 [0xa8,0x0f] + [0x74,0x02] + [0x24,0x40] + [0x58,0xc3] + nop(1)           #size 15 (16 in total.) PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+2); AND AL,0x40; POP RAX; RET
+    @dra03[@sleeveteststart] = sleevetest
+
+    #Applies curse to yourself on page B or poison on page C.
+    @sleevestart = @freestart + 0x60
+    @dra03[0x218e88] = jump(0x218e88, @sleevestart, :JMP) + nop(3)
+    #Rewriting the check for Glyph Sleeve to not pop RAX among other things, for convenience
+    precheck = [0x50] + [0x8a,0x05] + relative_address(@sleevestart+1,0x8cf0f4,6) + \
+                 [0xa8,0x0f] + [0x74,0x28] + [0x24,0x40] + [0x74,0x24]                      #size 15. PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (exit_ptr); AND AL,0x40; JE (exit_ptr)
+    @dra03[@sleevestart] = precheck
+    n = precheck.size
+    #Test which glyph page you are on
+    poisonpagetest = [0x8a,0x05] + relative_address(@sleevestart+n,0x8cefac,6) + [0x41,0x83,0xfb,0x02] + [0x73,0x3a] #size 12. MOV AL,byte ptr [0x1808cefac]; CMP R11D,0x2; JAE (applypoison)
+    @dra03[@sleevestart+n] = poisonpagetest
+    n += poisonpagetest.size
+
+    cursepagetest = [0x41,0x83,0xe3,0x01] + [0x75,0x18] #size 6. AND R11D,0x1; JNE (applypoison)
+    @dra03[@sleevestart+n] = cursepagetest
+    n += cursepagetest.size
+
+    #If on page A, clear all status effects
+    normalpage = [0x66,0xb8,0x01,0x00] + [0x66,0x89,0x05] + relative_address(@sleevestart+n+4,0x8cefae,7) + \
+                 [0x66,0x89,0x05] + relative_address(@sleevestart+n+11,0x8cefb0,7) #size 18. MOV AX,0x1; MOV word ptr [0x1808cefae],AX; MOV word ptr [0x1808cefb0],AX
+    @dra03[@sleevestart+n] = normalpage
+    n += normalpage.size
+
+    #Exit the function
+    exitsleeve = [0x58] + jump(@sleevestart+n,0x218e90,:JMP) #size 6. POP RAX; JMP 0x180219a90
+    @dra03[@sleevestart+n] = exitsleeve
+    @exit_ptr = @sleevestart+n
+    n += exitsleeve.size
+    @cursestart = @sleevestart+n
+
+    #Actually apply the curse
+    applycurse1 = [0x8a,0x05] + relative_address(@sleevestart+n,0x8cefac, 6) + [0x24,0x02] + [0x75,@exit_ptr-(@sleevestart+n+10)] #size 10. MOV AL,byte ptr [0x1808cefac]; AND AL,0x2; JNE (exitptr)
+    n += applycurse1.size
+    applycurse2 = [0xc6,0x05] + relative_address(@sleevestart+n,0x8cefac, 7) + [0x02] #size 7. MOV byte ptr [0x1808cefac],0x2
+    n += applycurse2.size
+    applycurse3 = [0x66,0xc7,0x05] + relative_address(@sleevestart+n,0x8cefb0,9) + [0xb0,0x04] #size 9. MOV word ptr [0x1808cefb0],0x4b0
+    n += applycurse3.size
+    applycurse4 = [0xeb,@exit_ptr-(@sleevestart+n+2)] #size 2. JMP (exit_ptr)
+    n += applycurse4.size
+    applycurse = applycurse1 + applycurse2 + applycurse3 + applycurse4
+    @dra03[@cursestart] = applycurse
+    @poisonstart = @cursestart + applycurse.size
+
+    #Actually apply the poison
+    applypoison1 = [0x8a,0x05] + relative_address(@sleevestart+n,0x8cefac, 6) + [0x24,0x01] + [0x75,@exit_ptr-(@sleevestart+n+10)] #size 10. MOV AL,byte ptr [0x1808cefac]; AND AL,0x1; JNE (exitptr)
+    n += applypoison1.size
+    applypoison2 = [0xc6,0x05] + relative_address(@sleevestart+n,0x8cefac, 7) + [0x01] #size 7. MOV byte ptr [0x1808cefac],0x1
+    n += applypoison2.size
+    applypoison3 = [0x66,0xc7,0x05] + relative_address(@sleevestart+n,0x8cefae,9) + [0x00,0x04] #size 9. MOV word ptr [0x1808cefae],0x400
+    n += applypoison3.size
+    applypoison4 = [0xeb,@exit_ptr-(@sleevestart+n+2)] #size 2. JMP (exit_ptr)
+    n += applypoison4.size
+    @dra03[@poisonstart] = applypoison1 + applypoison2 + applypoison3 + applypoison4
+
+    #Buff INT and MIND by 10 while poisoned instead of reducing them
+    poisonbufftest = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x06]  #size 7. CALL (@sleeveteststart) JE (poisondebuff)
+    @dra03[@sleevestart+n] = poisonbufftest
+    #@dra03[0x177274] = jump(0x177274, @sleevestart+n)
+    @dra03[0x177296] = jump(0x177296, @sleevestart+n)
+    @dra03[0x1772a7] = jump(0x1772a7, @sleevestart+n)
+    n += poisonbufftest.size
+    poisonbuff = [0x03,0xc2] + [0x83,0xc0,0x0a] + [0xc3] #size 6. ADD EAX,EDX; ADD EAX,0xa; RET
+    poisondebuff = [0x03,0xc2] + [0xc1,0xf8,0x02] + [0xc3] #size 6. ADD EAX,EDX; SAR EAX,0x2; RET
+    @dra03[@sleevestart+n] = poisonbuff + poisondebuff
+    n += poisonbuff.size + poisondebuff.size
+
+    #While cursed, gain 1 heart when damaging enemies
+    @dra03[0x139a5b] = jump(0x139a5b,@sleevestart+n)
+    cursebuff1test = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x2a] + [0xf6,0x05] + \
+        relative_address(@sleevestart+n+7,0x8cefda,7) + [0x1] + [0x74,0x21]             #size 18. CALL (sleevetest); JE (+42); TEST byte ptr [0x1808cefda],0x1; JE (+33)
+    @dra03[@sleevestart+n] = cursebuff1test
+    n += cursebuff1test.size
+    cursebuff1 = [0x66,0x8b,0x05] + relative_address(@sleevestart+n,0x8cef54,7) + [0x66,0x05,0x01,0x00] + \
+                 [0x66,0x3b,0x05] + relative_address(@sleevestart+n+11,0x8cef56,7) + \
+                 [0x66,0x0f,0x4f,0x05] + relative_address(@sleevestart+n+18,0x8cef56,8) + \
+                 [0x66,0x89,0x05] + relative_address(@sleevestart+n+26,0x8cef54,7) + [0xc3] #size 34. MOV AX,word ptr [0x1808cef54]; ADD AX,0x1; CMP AX,word ptr [0x1808cef56];
+                                                                                                     #CMOVG AX,word ptr [0x1808cef56]; MOV word ptr [0x1808cef54],AX
+    @dra03[@sleevestart+n] = cursebuff1
+    n += cursebuff1.size
+
+    #Also halve MP costs while cursed
+    @dra03[0x20f0e9] = jump(0x20f0e9,@sleevestart+n) + [0xeb,0x13] + nop(1) #size 7 (8 in total.) CALL (cursebuff2); JMP 0x18020fd03; NOP
+    @dra03[0x20f103] = [0x66,0x44,0x29,0x0d] + relative_address(0x20f103,0x8cef50,8) + [0xeb,0xe4] #size 10. SUB word ptr [0x1808cef50],R9W; JMP 0x18020fcf1
+    cursebuff2 = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x0c] + [0xf6,0x05] + relative_address(@sleevestart+n+7,0x8cefda,7) + [0x1] + \
+        [0x74,0x03] + [0x41,0xd1,0xe9] + [0xc3] #size 20. CALL (sleevetest); JE (+12); TEST byte ptr [0x1808cefda],0x1; JE (+3); RET
+    @dra03[@sleevestart+n] = cursebuff2
+    n += cursebuff2.size
+
+    #Free space instructions must end on an odd byte or else the program will interpret the rest of the free space wrong and crash.
+    if n % 2 != 0
+      @dra03[@sleevestart+n] = nop(1)
+    end
+
+    #name
+    replace_text(0x230f1ac2, "Drain".unpack("C*"))
+    desc = "B: Drain Hearts.".unpack("C*") + [0x06] + "C: STR -> INT/MND.".unpack("C*") + [0x0a]
+    replace_text(0x230f4f0a, desc)
+  end
+
+  def shift_sleeve
+    #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. Leaves the result in the zero flag.
+    @sleeveteststart = @freestart + 0x50
+    sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
+                 [0xa8,0x0f] + [0x74,0x02] + [0x24,0x40] + [0x58,0xc3] + nop(1)           #size 15 (16 in total.) PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+2); AND AL,0x40; POP RAX; RET
+    @dra03[@sleeveteststart] = sleevetest
+
+    @sleevestart = @freestart + 0x60
+    @dra03[0xea87e] = [0x0f,0x95,0xc0] + jump(0xea87e+3,@sleevestart)
+    frontdash1 = jump(@sleevestart,@sleeveteststart) + [0x74,0x16] + [0x80,0x3d] + relative_address(@sleevestart+7,0x8cefda,7) + [0x0] + [0x75,0x0d] #size 16. CALL (sleevetest); JE (+22);
+                                                                                                                                                              #CMP byte ptr [0x1808cefda],0; jne (+13)
+    #This will always be a negative number, so it will always turn positive. Might need to handle the sign more carefully if I change that somewhere else someday.
+    frontdash2 = [0x48,0x63,0xbc,0x29,0x7c,0xc8,0x2b,0x00] + [0x48,0xf7,0xdf] + [0xeb,0x08] + \
+        @dra03[0xea87e,1,8] + [0x85,0xc0] + [0xc3] #size 24. MOVSXD RDI,dword ptr [RCX+RBP+0x2bc87c]; NEG RDI; JMP (+8); (original code); TEST EAX,EAX; RET
+    @dra03[@sleevestart] = frontdash1 + frontdash2
+    n = frontdash1.size + frontdash2.size
+
+    @dra03[0xe96ca] = jump(0xe96ca,@sleevestart+n) + nop(2) #size 7. CALL (superjump); nop(2)
+    superjump = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x11] + [0x66,0x83,0x3d] + relative_address(@sleevestart+n+7,0x8cef5c,8) + [0x3] + \
+        [0x75,0x07] + [0x0f,0x94,0xc0] + [0x85,0xc0] + [0xeb,0x07] + @dra03[0xe96ca,1,7] + [0xc3] #size 32. CALL (sleevetest); JE (+17); CMP word ptr [0x1808cef5c],0x3;
+                                                                                                                            #JNE (+7); SETE AL; TEST EAX,EAX; JMP (+7); (original code); RET
+    @dra03[@sleevestart+n] = superjump
+    n += superjump.size
+    #Free space instructions must end on an odd byte or else the program will interpret the rest of the free space wrong and crash.
+    if n % 2 != 0
+      @dra03[@sleevestart+n] = nop(1)
+    end
+
+    #name
+    replace_text(0x230f1ac2, "Shift".unpack("C*"))
+    desc = "Volaticus page: ".unpack("C*") + [0x13] + " + ".unpack("C*") + [0x0b] + [0x06] + "A: Dash ahead.".unpack("C*") + [0x0a]
+    replace_text(0x230f4f0a, desc)
+  end
+
+  def tooth_sleeve
+    #Unlike most relevant memory addresses which have a consistent offset between 1.01 and 1.03, the RNG address is completely different.
+    if @options[:version] == "1.03"
+      rng_address = 0x8f50b4
+    else
+      rng_address = 0x8fc604
+    end
+
+    #todo: compress this someday, free space is tight and it'd be nice to add more effects too
+
+    #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. This time all effects are in page C so check that too. Leaves the result in the zero flag.
+    @sleeveteststart = @freestart + 0x48
+    sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
+                 [0xa8,0x0f] + [0x74,0x0b] + [0x24,0x40] + [0x74,0x07] + [0xf6,0x05] + relative_address(@sleeveteststart+15,0x8cefda,7) + [0x02] + \
+                 [0x58,0xc3]           #size 24. PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+11); AND AL,0x40; JE (+7); TEST byte ptr [0x1808cefda],0x2; POP RAX; RET
+    @dra03[@sleeveteststart] = sleevetest
+
+    @rngstart = @sleeveteststart+sleevetest.size
+    advance_rng = [0x8b,0x05] + relative_address(@rngstart,rng_address,6) + @dra03[0x1fe54a,1,14] + \
+        [0x89,0x05] + relative_address(@rngstart+20,rng_address,6) + [0xc3] #size 27. MOV EAX,dword ptr [0x1808fc604]; (original code); MOV dword ptr [0x1808fc604],EAX
+    @dra03[@rngstart] = advance_rng
+
+    @sleevestart = @rngstart+advance_rng.size
+    @dra03[0x3b71a] = jump(0x3b71a,@sleevestart)
+    eattest = [0x0f,0x95,0xc2] + jump(@sleevestart+3,@sleeveteststart) + [0x74,0x0d] #size 10. SETNE DL; CALL (sleevetest); JE (+13)
+    @dra03[@sleevestart] = eattest
+    n = eattest.size
+
+    eat = jump(@sleevestart+n,@rngstart) + [0x83,0xe0,0x7f] + [0x84,0xd2] + [0x8b,0xd0] + [0xc3] + [0x84,0xd2] + @dra03[0x3b71a,1,5] + [0xc3] #size 21. CALL (advance_rng); AND EAX,0x7f; TEST DL,DL;
+                                                                                                                                                      # MOV EDX,EAX; RET; TEST DL,DL; (original code); RET
+    @dra03[@sleevestart+n] = eat
+    n += eat.size
+
+    @dra03[0x3b85c] = jump(0x3b85c,@sleevestart+n)
+    spoiled = [0x50] + jump(@sleevestart+n+1,@sleeveteststart) + [0x74,0x0f] + jump(@sleevestart+n+8,@rngstart) + \
+        [0x83,0xe0,0x7f] + [0x8b,0xd0] + [0x58] + [0x66,0x29,0xd0] + [0xc3] + [0x58] + @dra03[0x3b85c,1,5] + [0xc3] #size 30. PUSH RAX; CALL (sleevetest); JE (+15); CALL (advance_rng);
+                                                                                                                            # AND EAX,0x7f; MOV EDX,EAX; POP RAX; SUB AX,DX; RET; POP RAX; (original code); RET
+    @dra03[@sleevestart+n] = spoiled
+    n += spoiled.size
+
+    @dra03[0x3b7c2] = jump(0x3b7c2,@sleevestart+n)
+    hearts = [0x50] + jump(@sleevestart+n+1,@sleeveteststart) + [0x74,0x0f] + jump(@sleevestart+n+8,@rngstart) + \
+        [0x83,0xe0,0x0f] + [0x8b,0xd0] + [0x58] + [0x66,0x01,0xd0] + [0xc3] + [0x58] + @dra03[0x3b7c2,1,5] + [0xc3] #size 30. PUSH RAX; CALL (sleevetest); JE (+15); CALL (advance_rng);
+                                                                                                                            # AND EAX,0x0f; MOV EDX,EAX; POP RAX; ADD AX,DX; RET; POP RAX; (original code); RET
+    @dra03[@sleevestart+n] = hearts
+    n += hearts.size
+
+    @dra03[0x3b6d8] = jump(0x3b6d8,@sleevestart+n) + nop(2)
+    choosetype = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x21] + jump(@sleevestart+n+7,@rngstart) + [0x83,0xe0,0x07] + [0x75,0x07] + [0xb8,0x02,0x00,0x00,0x00] + [0xeb,0x14] + [0x83,0xe8,0x04] + [0x7e,0x07] + \
+        [0xb8,0x07,0x00,0x00,0x00] + [0xeb,0x08] + [0x31,0xc0] + [0xeb,0x04] + @dra03[0x3b6d8,1,7] + [0xc3] #size 48. CALL (sleevetest); JE (+33); CALL (advance_rng); AND EAX,0x7; JNE (+7); MOV EAX,0x2;
+                                                                                                                    # JMP (+20); SUB EAX,0x4; JLE (+7); MOV EAX,0x7; JMP (+8); XOR EAX,EAX; JMP (+4); (original code); RET
+    @dra03[@sleevestart+n] = choosetype
+    n += choosetype.size
+
+    @dra03[0x23c181] = jump(0x23c181,@sleevestart+n)
+    skipchecks1 = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x03] + [0x31,0xc0] + [0xc3] + @dra03[0x23c181,1,5] + [0xc3] #size 16. CALL (sleevetest); JE (+3); XOR EAX,EAX; RET; (original code); RET
+    @dra03[@sleevestart+n] = skipchecks1
+    n += skipchecks1.size
+
+    @dra03[0x23b352] = jump(0x23b352,@sleevestart+n,:JMP) + nop(2)
+    skipchecks2 = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x05] + jump(@sleevestart+n+7,0x23b373,:JMP) + @dra03[0x23b352,1,7] + jump(@sleevestart+n+19,0x23b359,:JMP)
+    @dra03[@sleevestart+n] = skipchecks2
+    n += skipchecks2.size
+
+    #Free space instructions must end on an odd byte or else the program will interpret the rest of the free space wrong and crash.
+    if (@sleevestart+n) % 2 != 0
+      @dra03[@sleevestart+n] = nop(1)
+    end
+
+    #name
+    replace_text(0x230f1ac2, "Tooth".unpack("C*"))
+    desc = "C: Eat ANY item".unpack("C*") + [0x06] + "for random effects.".unpack("C*") + [0x0a]
+    replace_text(0x230f4f0a, desc)
   end
 
   def post_read_tweaks()
@@ -503,6 +746,20 @@ class Tweaks
     #(Alternately, not also) check for whether you have Book of Spirits
     #Jump to custom Book of Spirits code when enemy glyph hasn't been seen
     @dra03[0x2192a4] = [0x74,0x2e] #size 2. JE 0x180219ed4
+  end
+
+  def fix_bossrush_arthroverta()
+    #Arthroverta's Revenge makes bossrush strange by deleting the original boss.
+    #This is a rough bandaid fix that auto-unlocks the bossrush teleporter until I have time to check how to change the boss rush room
+    #Doesn't actually work for real use as it also unlocks the boss door in arthroverta's new room. Needs more research
+    #@dra03[0x10f333] = jump(0x10f333,0x10f4e7,:JMP)
+    #@dra03[0x10f4e7] = [0x83,0xf9,0x01] + jump(0x10f4ea,0x10f644,:JMP)
+    #@dra03[0x10f644] = jump(0x10f644,0x10f338,:JE) + jump(0x10f64a,0x10fd03,:JMP)
+    #@dra03[0x10fd03] = [0x0f,0xa3,0xc8] + jump(0x10fd06,0x110184,:JMP)
+    #@dra03[0x110184] = jump(0x110184,0x10f348,:JAE) + jump(0x11018a,0x10f338,:JMP)
+
+    #Instead just make Arthroverta already dead in boss rush for now
+    @dra03[0x9c425] = 0x2
   end
 
   def change_item_text_for_static_requirement(item_name, new_text)
