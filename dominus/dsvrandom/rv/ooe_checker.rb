@@ -84,7 +84,7 @@ require 'set'
     #This chest may be randomized in the future but for now it's disabled in normal mode if trick sleeve is on and always glyph sleeve otherwise.
     #In hard mode it would always produce a Trick Sleeve if that option is enabled, so in pickup_randomizer.rb it's set to a non-progression item for that case.
     #if !options[:rv_trick_sleeve]
-      Locations.locs.delete_if {|loc| loc[:name] == "Glyph Sleeve"}
+      Locations.locs.delete_if {|loc| loc[:id] == "02-00-04_07"}
     #end
     @no_progression_locations = Locations.locs.select {|loc| loc[:type].include?("No Progression")}
     @all_droppable_pickups = @all_pickups.select {|key, item| (not item[:progression]) and (not OoEItems.undroppables.has_key?(key))}
