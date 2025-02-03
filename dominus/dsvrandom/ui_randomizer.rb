@@ -87,6 +87,7 @@ class Ui_Randomizer
     attr_reader :horizontalSpacer_4
     attr_reader :horizontalSpacer_3
     attr_reader :randomize_button
+    attr_reader :randomize_enemy_locations
     attr_reader :rv_difficulty
     attr_reader :rv_open_castle
     attr_reader :rv_unlock_albus
@@ -523,6 +524,12 @@ class Ui_Randomizer
 
     @gridLayout_10.addWidget(@rv_trick_sleeve, 0, 1, 1, 1)
 
+    @randomize_enemy_locations = Qt::CheckBox.new(@groupBox_10)
+    @randomize_enemy_locations.objectName = "randomize_enemy_locations"
+    @randomize_enemy_locations.checked = false
+
+    @gridLayout_10.addWidget(@randomize_enemy_locations, 1, 1, 1, 1)
+
     @rv_hint_cat_label = Qt::Label.new(@tab_3)
     @rv_hint_cat_label.objectName = "rv_hint_cat_label"
     @gridLayout_7.addWidget(@rv_hint_cat_label, 1, 0, 1, 1)
@@ -602,6 +609,10 @@ class Ui_Randomizer
     @open_world_label.objectName = "open_world_label"
     @open_world_label.wordWrap = true
 
+    @cats_label = Qt::Label.new(@tab_5)
+    @cats_label.objectName = "cats_label"
+    @cats_label.wordWrap = true
+
     @difficulty_preset_label = Qt::Label.new(@tab_5)
     @difficulty_preset_label.objectName = "difficulty_preset_label"
     @difficulty_preset_label.wordWrap = true
@@ -628,6 +639,7 @@ class Ui_Randomizer
     @test_box.addItem(@patches_label, "About patches")
     @test_box.addItem(@modded_label, "About pre-modded game files")
     @test_box.addItem(@open_world_label, "About open world options")
+    @test_box.addItem(@cats_label, "Hint cats")
     @test_box.addItem(@difficulty_preset_label, "Item Location Difficulty Presets")
     @test_box.addItem(@vanilla_label, "Vanilla")
     @test_box.addItem(@creative_label, "Creative")
@@ -745,6 +757,8 @@ class Ui_Randomizer
     @groupBox_7.title = Qt::Application.translate("Randomizer", "Progression randomization options", nil, Qt::Application::UnicodeUTF8)
     @randomize_pickups.text = Qt::Application.translate("Randomizer", "Randomize Item/Skill Locations", nil, Qt::Application::UnicodeUTF8)
 
+    @randomize_enemy_locations.text = Qt::Application.translate("Randomizer", "Randomize Enemy Locations", nil, Qt::Application::UnicodeUTF8)
+
     @rv_open_castle.text = Qt::Application.translate("Randomizer", "Open World Map + Dracula's Castle", nil, Qt::Application::UnicodeUTF8)
     @rv_unlock_albus.text = Qt::Application.translate("Randomizer", "Unlock Albus/Barlowe", nil, Qt::Application::UnicodeUTF8)
     @rv_unlock_cerberus.text = Qt::Application.translate("Randomizer", "Unlock Cerberus Gate", nil, Qt::Application::UnicodeUTF8)
@@ -768,6 +782,7 @@ class Ui_Randomizer
     @rv_hint_cat_locations.toolTip = @rv_hint_cat_label.toolTip
     @rv_hint_cat_locations.addItem("No Hints")
     @rv_hint_cat_locations.addItem("Original Locations")
+    @rv_hint_cat_locations.addItem("Rebalanced Locations")
     @rv_hint_cat_locations.addItem("Randomized Among Villager Locations")
     @rv_hint_cat_locations.setCurrentIndex(1)
 
@@ -824,7 +839,8 @@ class Ui_Randomizer
 
 
     @help_label.text = Qt::Application.translate("Randomizer", "Select a heading below to read detailed descriptions of the randomizer options. Click the About button to find out how to ask me other questions.", nil, Qt::Application::UnicodeUTF8)
-    @open_world_label.text = Qt::Application.translate("Randomizer", "Some notes on a few open world options:\n\n- When Unlock Albus/Barlowe is selected, Barlowe will be given a duplicate of a progression glyph that exists somewhere else in the world. Absorb it when he casts Globus during the fight. Albus's Acerbatus will be replaced by a damaging glyph which may be a progression glyph, but may also not be. You can fight Albus/Barlowe at any time after the tutorial as soon as you're ready to survive the fight. I personally recommend enabling this option as it opens up the game considerably.\n\n- Cats that you find in the world will now give hints on the locations of Custos/Dominus glyphs (if you've selected Unlock Cerberus Gate it will only be Dominus hints.) The transformation required to talk to cats will be randomized if Unlock Cerberus Gate is selected. If not selected, to account for the hints being weaker, all transformations will be able to talk to cats.\nAlso, note that the hints will become more detailed when you've rescued all 3 cats other than Tom.\n\n- The split pools option makes glyphs only appear at glyph locations, and items only appear at item locations. Use this if you want slower checks like boss fights to be more valuable, or for seeds to be quicker on average.", nil, Qt::Application::UnicodeUTF8)
+    @open_world_label.text = Qt::Application.translate("Randomizer", "Some notes on a few open world options:\n\n- When Unlock Albus/Barlowe is selected, Barlowe will be given a duplicate of a progression glyph that exists somewhere else in the world. Absorb it when he casts Globus during the fight. Albus's Acerbatus will be replaced by a damaging glyph which may be a progression glyph, but may also not be. You can fight Albus/Barlowe at any time after the tutorial as soon as you're ready to survive the fight. I personally recommend enabling this option as it opens up the game considerably.\n\n- The split pools option makes glyphs only appear at glyph locations, and items only appear at item locations. Use this if you want slower checks like boss fights to be more valuable, or for seeds to be quicker on average.\n\n- Arthroverta's Revenge moves Arthroverta to a random room somewhere in the world. This is still an experimental option, so you may find some awkwardness. For example, the orb and medal chest will spawn in unusual spots, and you need to reenter the boss room after winning in order to collect items. There is one room where getting into the room at all might be a challenge, but it can be done with what you have.", nil, Qt::Application::UnicodeUTF8)
+    @cats_label.text = Qt::Application.translate("Randomizer", "Cats that you find in the world will now give hints on the locations of Custos/Dominus glyphs (if you've selected Unlock Cerberus Gate it will only be Dominus hints.) The transformation required to talk to cats will be randomized if Unlock Cerberus Gate is selected. If not selected, to account for the hints being weaker, all transformations will be able to talk to cats.\nAlso, note that the hints will become more detailed when you've rescued all 3 cats other than Tom.\n\nExplanation of choices:\nOriginal Locations - Places the cats where they were in the original game (Monastery, Minera Prison Island, Mystery Manor.)\nRebalanced Locations - Places the cats in new locations which don't have very many items. (Skeleton Cave, Oblivion Ridge, Argila Swamp.)\nRandomize Among Villager Locations - Randomly places the cats in a location that would have been occupied by a villager.\n\nRandomizing the cats is not recommended unless you chose to unlock Cerberus Gate, since this will significantly reduce the helpfulness of the hints on average.", nil, Qt::Application::UnicodeUTF8)
     @patches_label.text = Qt::Application.translate("Randomizer", "In order to avoid creating >800MB files every time you make a seed, the randomizer patches your game instead, and uses the same patch file to unrandomize it.\nPatch files are stored with their seed name. There will also be one set of patched files without a seed name. That's the most recently patched files. Make sure you don't delete those until you unrandomize your game. I may add a function to clean up your patch folder for you in the future.\n\nIn the event you do make a mistake and delete these patch files, you can use the Restore Game Files button above to unrandomize your game. It will take longer than unrandomizing normally.\n\nBy the way, you can still create multiple seeds in advance if you uncheck the Auto-Apply checkbox. When it's checked, you have to unrandomize the game first.", nil, Qt::Application::UnicodeUTF8)
     @modded_label.text = Qt::Application.translate("Randomizer", "The randomizer can theoretically be used even if you've already modded your game files with another mod, but it's not recommended. It's possible that the other mod may overwrite something that is also overwritten by the randomizer, and due to the patching method, this could produce bad results.\n\nThe checkbox is still there if you want to use it, but be aware that the randomizer can't tell anymore whether your game has been randomized, so it has to check against your backup file, and the Checking Files step may take longer.", nil, Qt::Application::UnicodeUTF8)
     @difficulty_preset_label.text = Qt::Application.translate("Randomizer", "You may currently choose from 3 different presets for the difficulty of the logic used to place items in your seed.\nYou can read more detailed descriptions in their specific headings below, but the quick summary is that Vanilla is the easiest and Do Your Worst is the hardest. Creative can be considered a middle ground which may require you to know some non-obvious aspects of the game.\n\nThe presets don't only consider movement such as double jump or flight. They also consider what equipment and damage glyphs are available, and make an attempt to arm you with at least a certain amount of gear appropriately to your difficulty. This system is still unfinished and will never be perfect, and it's subject to the whims of randomness, but it does its job in most cases, and is certainly better than nothing.\n\nIf you find an uncompletable seed according to the preset rules, please by all means share the spoiler log with me!", nil, Qt::Application::UnicodeUTF8)
