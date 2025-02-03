@@ -244,9 +244,9 @@ class Tweaks
     unlockalbus = [0x81,0x0c,0x32,0x00,0x20,0x00,0x02] #size 7. OR dword ptr [RDX + RSI*0x1],0x2002000
     unlockvillagers = [0x81,0x0d] + relative_address(@freestart+7,0x8cf024,10) + [0x00,0x24,0x04,0x11] + \
                       [0x81,0x0d] + relative_address(@freestart+17,0x8cf028,10) + [0x81,0x88,0x88,0x00] #size 20. OR dword ptr [0x1808cf024],0x11042400; OR dword ptr [0x1808cf028],0x888881
-    finishvillagers = [0xb8,0x01,0x00,0x00,0x00,0xc3] #size 6. MOV EAX,0x1; RET
-    albusmemories = [0x81,0x25] + relative_address(@freestart+0x30,0x8cf020,10) + [0xff,0xff,0xff,0xfd] + \
-                    @dra03[0x26c11d,1,6] + jump(@freestart+0x30+16,0x26c123,:JMP) #size 21. AND dword ptr [0x1808cf020],0x-02000000; (original code); JMP 0x18026cd23
+    finishvillagers = [0x31,0xc0,0xff,0xc0,0xc3] #size 5. XOR EAX,EAX; INC EAX; RET
+    albusmemories = [0x81,0x25] + relative_address(@freestart+0x20,0x8cf020,10) + [0xff,0xff,0xff,0xfd] + \
+                    @dra03[0x26c11d,1,6] + jump(@freestart+0x20+16,0x26c123,:JMP) #size 21. AND dword ptr [0x1808cf020],0x-02000000; (original code); JMP 0x18026cd23
     cerberus = @options[:rv_unlock_cerberus] ? ([0x83,0x0d] + relative_address(0x11f76a+14,0x8cf010,7) + [0x40]) : ([0xeb,0x09] + nop(5)) #size 7. OR dword ptr [0x1808cf010],0x40 --- Alternately jump to next code
 
     #open the world map
@@ -254,11 +254,11 @@ class Tweaks
 
     if @options[:rv_unlock_albus]
       @dra03[0x215a47] = jump(0x215a47,@freestart) #size 5. CALL 0x18028f0d0
-      @dra03[@freestart] = unlockalbus + unlockvillagers + finishvillagers + nop(1) #size 34
+      @dra03[@freestart] = unlockalbus + unlockvillagers + finishvillagers #size 32
 
       #fix flashbang on defeating albus
-      @dra03[0x26c11d] = jump(0x26c11d,@freestart+0x30, :JMP) + nop(1) #size 5 (6 total). JMP 0x18028f120
-      @dra03[@freestart+0x30] = albusmemories + nop(1) #size 22
+      @dra03[0x26c11d] = jump(0x26c11d,@freestart+0x20, :JMP) + nop(1) #size 5 (6 total). JMP 0x18028f120
+      @dra03[@freestart+0x20] = albusmemories + nop(1) #size 22
     end
 
     #make Nikolai always spawn in Wygol Village even if you haven't gone to Monastery
@@ -361,13 +361,13 @@ class Tweaks
 
   def drain_sleeve
     #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. Leaves the result in the zero flag.
-    @sleeveteststart = @freestart + 0x50
+    @sleeveteststart = @freestart + 0x40
     sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
                  [0xa8,0x0f] + [0x74,0x02] + [0x24,0x40] + [0x58,0xc3] + nop(1)           #size 15 (16 in total.) PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+2); AND AL,0x40; POP RAX; RET
     @dra03[@sleeveteststart] = sleevetest
 
     #Applies curse to yourself on page B or poison on page C.
-    @sleevestart = @freestart + 0x60
+    @sleevestart = @freestart + 0x50
     @dra03[0x218e88] = jump(0x218e88, @sleevestart, :JMP) + nop(3)
     #Rewriting the check for Glyph Sleeve to not pop RAX among other things, for convenience
     precheck = [0x50] + [0x8a,0x05] + relative_address(@sleevestart+1,0x8cf0f4,6) + \
@@ -423,7 +423,6 @@ class Tweaks
     #Buff INT and MIND by 10 while poisoned instead of reducing them
     poisonbufftest = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x06]  #size 7. CALL (@sleeveteststart) JE (poisondebuff)
     @dra03[@sleevestart+n] = poisonbufftest
-    #@dra03[0x177274] = jump(0x177274, @sleevestart+n)
     @dra03[0x177296] = jump(0x177296, @sleevestart+n)
     @dra03[0x1772a7] = jump(0x1772a7, @sleevestart+n)
     n += poisonbufftest.size
@@ -431,6 +430,15 @@ class Tweaks
     poisondebuff = [0x03,0xc2] + [0xc1,0xf8,0x02] + [0xc3] #size 6. ADD EAX,EDX; SAR EAX,0x2; RET
     @dra03[@sleevestart+n] = poisonbuff + poisondebuff
     n += poisonbuff.size + poisondebuff.size
+
+    #Do not change STR while poisoned
+    poisonnulltest = jump(@sleevestart+n,@sleeveteststart) + [0x74,0x06]  #size 7. CALL (@sleeveteststart) JE (+2)
+    @dra03[@sleevestart+n] = poisonnulltest
+    @dra03[0x177274] = jump(0x177274, @sleevestart+n)
+    n += poisonnulltest.size
+    poisonnull = [0xeb,0x05] + [0x03,0xc2] + [0xc1,0xf8,0x02] + [0xc3] #size 8. JMP (+5); ADD EAX,EDX; SAR EAX,0x2; RET
+    @dra03[@sleevestart+n] = poisonnull
+    n += poisonnull.size
 
     #While cursed, gain 1 heart when damaging enemies
     @dra03[0x139a5b] = jump(0x139a5b,@sleevestart+n)
@@ -459,20 +467,25 @@ class Tweaks
       @dra03[@sleevestart+n] = nop(1)
     end
 
+    #Make Volaticus not get canceled by these debuffs
+    @dra03[0x1ba01a] = jump(0x1ba01a,0x1b9ce4,:JNE)
+    @dra03[0x1b9ce4] = jump(0x1b9ce4,@sleeveteststart) + jump(0x1b9ce9,0x1bb163,:JMP) #size 10. CALL (sleevetest); JMP 0x1801bbd63
+    @dra03[0x1bb163] = jump(0x1bb163,0x1ba138,:JE) + jump(0x1bb169,0x1ba020,:JMP) #size 11. JE 0x1801ba3d8, JMP 1801bac20
+
     #name
     replace_text(0x230f1ac2, "Drain".unpack("C*"))
-    desc = "B: Drain Hearts.".unpack("C*") + [0x06] + "C: STR -> INT/MND.".unpack("C*") + [0x0a]
+    desc = "B: Drain Hearts.".unpack("C*") + [0x06] + "C: Buff INT/MND.".unpack("C*") + [0x0a]
     replace_text(0x230f4f0a, desc)
   end
 
   def shift_sleeve
     #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. Leaves the result in the zero flag.
-    @sleeveteststart = @freestart + 0x50
+    @sleeveteststart = @freestart + 0x40
     sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
                  [0xa8,0x0f] + [0x74,0x02] + [0x24,0x40] + [0x58,0xc3] + nop(1)           #size 15 (16 in total.) PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+2); AND AL,0x40; POP RAX; RET
     @dra03[@sleeveteststart] = sleevetest
 
-    @sleevestart = @freestart + 0x60
+    @sleevestart = @freestart + 0x50
     @dra03[0xea87e] = [0x0f,0x95,0xc0] + jump(0xea87e+3,@sleevestart)
     frontdash1 = jump(@sleevestart,@sleeveteststart) + [0x74,0x16] + [0x80,0x3d] + relative_address(@sleevestart+7,0x8cefda,7) + [0x0] + [0x75,0x0d] #size 16. CALL (sleevetest); JE (+22);
                                                                                                                                                               #CMP byte ptr [0x1808cefda],0; jne (+13)
@@ -510,7 +523,7 @@ class Tweaks
     #todo: compress this someday, free space is tight and it'd be nice to add more effects too
 
     #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. This time all effects are in page C so check that too. Leaves the result in the zero flag.
-    @sleeveteststart = @freestart + 0x48
+    @sleeveteststart = @freestart + 0x38
     sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
                  [0xa8,0x0f] + [0x74,0x0b] + [0x24,0x40] + [0x74,0x07] + [0xf6,0x05] + relative_address(@sleeveteststart+15,0x8cefda,7) + [0x02] + \
                  [0x58,0xc3]           #size 24. PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+11); AND AL,0x40; JE (+7); TEST byte ptr [0x1808cefda],0x2; POP RAX; RET
@@ -574,6 +587,32 @@ class Tweaks
     replace_text(0x230f4f0a, desc)
   end
 
+  def slide_sleeve()
+    #Check for whether the Glyph Sleeve relic is owned and equipped. Will be called from various places. Leaves the result in the zero flag.
+    @sleeveteststart = @freestart + 0x40
+    sleevetest = [0x50] + [0x8a,0x05] + relative_address(@sleeveteststart+1,0x8cf0f4,6) + \
+                 [0xa8,0x0f] + [0x74,0x02] + [0x24,0x40] + [0x58,0xc3] + nop(1)           #size 15 (16 in total.) PUSH RAX; MOV AL,byte ptr [0x1808cf0f4]; TEST AL,0xf; JE (+2); AND AL,0x40; POP RAX; RET
+    @dra03[@sleeveteststart] = sleevetest
+
+    @sleevestart = @freestart + 0x50
+    @dra03[0xeaabc] = jump(0xeaabc,@sleevestart)
+    slidebuff1 = jump(@sleevestart,@sleeveteststart) + [0x74,0x17] + [0x80,0x0d] + relative_address(@sleevestart+7,0x8fcec0,7) + [0x10] + \
+        [0x66,0x83,0x3d] + relative_address(@sleevestart+14,0x8cef5c,8) + [0x4] + [0x75,0x06] + [0x81,0xc3,0x00,0x14,0x00,0x00] + @dra03[0xeaabc, 1, 5] + [0xc3] #size 36. CALL (sleevetest); JE (+23);
+                                                                                        # OR byte ptr [0x1808fcec0],0x10; CMP word ptr [0x1808cef5c],0x4; JNE (+6); ADD EBX,0x1400; (original code); RET
+    @dra03[@sleevestart] = slidebuff1
+    n = slidebuff1.size
+
+    #Free space instructions must end on an odd byte or else the program will interpret the rest of the free space wrong and crash.
+    if (@sleevestart+n) % 2 != 0
+      @dra03[@sleevestart+n] = nop(1)
+    end
+
+    #name
+    replace_text(0x230f1ac2, "Slide".unpack("C*"))
+    desc = "Slide past foes.".unpack("C*") + [0x06] + "Rapidus page: +range.".unpack("C*") + [0x0a]
+    replace_text(0x230f4f0a, desc)
+  end
+
   def post_read_tweaks()
     if @options[:remove_area_names]
       @game.rooms.each do |room|
@@ -590,6 +629,10 @@ class Tweaks
     if @options[:rv_unlock_albus]
       george_event = @game.get_entity_by_id("11-00-08_02")
       george_event.type = 0
+      if @options[:rv_hint_cat_locations] == "Randomized Among Villager Locations"
+        george_event.x_pos = 0x50
+        george_event.y_pos = 0xa0
+      end
     end
   end
 
