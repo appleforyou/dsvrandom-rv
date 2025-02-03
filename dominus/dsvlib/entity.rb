@@ -11,7 +11,8 @@ class Entity
               :var_b
 
   #other instance variables have their own custom setters that write to @alldata
-  attr_accessor :entity_pointer
+  attr_accessor :entity_pointer,
+                :location_is_randomized #used by enemy randomizer
 
   def x_pos=(x)
     check_pointer()
@@ -109,7 +110,7 @@ class Entity
   end
 
   def is_common_enemy?
-    [*0x00..0x66, *0x68..0x6A].include?(subtype)
+    is_enemy? and [*0x00..0x66, *0x68..0x6A].include?(subtype)
   end
 
   def is_boss?
@@ -175,11 +176,11 @@ class Entity
   end
 
   def is_warp_point?
-    is_special_object and subtype == 0x34
+    is_special_object? and subtype == 0x34
   end
 
   def is_villager?
-    is_special_object and subtype == 0x89
+    is_special_object? and subtype == 0x89
   end
 
   def entity_str
