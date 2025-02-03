@@ -16,6 +16,7 @@ def self.options
 
 
   randomize_pickups: "Randomizes items and glyphs you find in static locations.",
+  randomize_enemy_locations: "Randomizes which enemies are placed in common enemy locations (not bosses.)",
   
 
   randomize_enemy_drops: "Randomizes the non-required items and glyphs dropped or cast by enemies.",
