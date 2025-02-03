@@ -109,6 +109,7 @@ class PickupRandomizer
       @game.tweaks.set_chosen_transformation(transformation)
       @checker.all_progression_pickups[transformation] = OoEItems.glyphs[transformation]
       cats = ["SoybeanFlour", "Tofu", "Ink"]
+      cat_indexes = {"Tofu" => 0, "Ink" => 1, "SoybeanFlour" => 2}
       if @options[:rv_hint_cat_locations] == "Randomized Among Villager Locations"
         #Randomize cats among villager locations
         villager_locations = Locations.locs.select {|loc| loc[:type].include?("Villager")}
@@ -117,11 +118,11 @@ class PickupRandomizer
           cat_entity = @game.get_entity_by_id(loc[:id])
           cat_entity.type = 2 #special object
           cat_entity.subtype = 0x3f #cat
-          cat_indexes = {"Tofu" => 0, "Ink" => 1, "SoybeanFlour" => 2}
           cat_entity.var_a = cat_indexes[cat]
           cat_entity.var_b = 2 #needs rescuing
           villager_locations.delete(loc)
         end
+
         #Also null out the original cat locations
         ["12-00-07_07", "0E-00-03_00", "08-02-01-10"].each do |loc|
           original_cat = @game.get_entity_by_id(loc)
@@ -133,6 +134,43 @@ class PickupRandomizer
           skele_entity.type = 1 #enemy
           skele_entity.subtype = 2 #skeleton
           skele_entity.var_a = 1 #can jump
+        end
+      elsif @options[:rv_hint_cat_locations] == "Rebalanced Locations"
+        # Place in Skeleton Cave, Oblivion Ridge, and Argila Swamp
+        placement_cats = cats.dup.shuffle(random:rng)
+        cat = placement_cats.pop()
+        @game.get_entity_by_id("05-00-04_00").room.add_entity() # Near wooden chest in middle of Argila Swamp
+        cat_entity = @game.get_entity_by_id("05-00-04_08")
+        cat_entity.x_pos = 0x1e0
+        cat_entity.y_pos = 0x80
+        cat_entity.type = 2 #special object
+        cat_entity.subtype = 0x3f #cat
+        cat_entity.var_a = cat_indexes[cat]
+        cat_entity.var_b = 2 #needs rescuing
+
+        cat = placement_cats.pop()
+        cat_entity = @game.get_entity_by_id("11-00-08_02") # George's Room in Skeleton Cave
+        cat_entity.x_pos = 0x50
+        cat_entity.y_pos = 0xa0
+        cat_entity.type = 2 #special object
+        cat_entity.subtype = 0x3f #cat
+        cat_entity.var_a = cat_indexes[cat]
+        cat_entity.var_b = 2 #needs rescuing
+
+        cat = placement_cats.pop()
+        @game.get_entity_by_id("10-00-00_00").room.add_entity() # Church in Oblivion Ridge
+        cat_entity = @game.get_entity_by_id("10-00-00_04")
+        cat_entity.x_pos = 0x80
+        cat_entity.y_pos = 0x80
+        cat_entity.type = 2 #special object
+        cat_entity.subtype = 0x3f #cat
+        cat_entity.var_a = cat_indexes[cat]
+        cat_entity.var_b = 2 #needs rescuing
+
+        #Also null out the original cat locations
+        ["12-00-07_07", "0E-00-03_00", "08-02-01-10"].each do |loc|
+          original_cat = @game.get_entity_by_id(loc)
+          original_cat.type = 0
         end
       end
     else
