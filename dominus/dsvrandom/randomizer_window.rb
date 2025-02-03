@@ -268,7 +268,7 @@ class RandomizerWindow < Qt::Dialog
       end
     end
     @ui.rv_open_castle.setEnabled(false)
-    if (not @ui.rv_unlock_albus.checked) and @ui.rv_hint_cat_locations.currentIndex() == 2
+    if (not @ui.rv_unlock_albus.checked) and [2,3].include?(@ui.rv_hint_cat_locations.currentIndex())
       @ui.rv_hint_cat_locations.setCurrentIndex(1)
     end
   end
@@ -532,6 +532,7 @@ class RandomizerWindow < Qt::Dialog
     max_val += 2 if options_hash[:randomize_enemy_drops]
     max_val += 1 if options_hash[:randomize_bgm]
     max_val += 1 if options_hash[:randomize_shop]
+    max_val += 2 if options_hash[:randomize_enemy_locations]
 
     @progress_dialog = ProgressDialog.new("Randomizing", "Initializing...", max_val)
     @progress_dialog.execute do
