@@ -1,6 +1,7 @@
 class EnemyDNA
   attr_reader :enemy_id,
               :name,
+              :atk,
               :glyph
 
   def initialize(enemy_id, game)
