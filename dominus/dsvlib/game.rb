@@ -27,6 +27,7 @@ class Game
     @patch_folder = patch_folder
     @checker = checker
     @mode = mode
+    @rng = rng
     dra03_stages = 0
     alldata_stages = 0
     puts "Version is #{@options[:version]}"
@@ -54,17 +55,13 @@ class Game
       tweaks.general_game_tweaks()
       read_all_rooms()
       tweaks.post_read_tweaks()
-      if @options[:rv_arthrovertas_revenge]
-        @arthroverta = Arthroverta.new(self, rng)
-      end
       if @options[:rv_trick_sleeve]
         tweaks.normalize_glyph_sleeve()
-        trick_sleeve = [:drain_sleeve, :shift_sleeve, :tooth_sleeve].sample(random: rng)
+        trick_sleeve = [:drain_sleeve, :shift_sleeve, :tooth_sleeve, :slide_sleeve].sample(random: rng)
         tweaks.method(trick_sleeve)[]
       end
     end
     yield 5
-
   end
 
   #called by room initialization code
@@ -77,6 +74,10 @@ class Game
     end
     a = areas[target_area]
     return [a, a[target_sector]]
+  end
+
+  def randomize_arthroverta
+    @arthroverta = Arthroverta.new(self, @rng)
   end
 
   def enemy_dnas
