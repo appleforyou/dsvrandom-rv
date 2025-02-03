@@ -6,6 +6,7 @@ require_relative 'randomizers/drop_randomizer'
 require_relative 'randomizers/chest_pool_randomizer'
 require_relative 'randomizers/music_randomizer'
 require_relative 'randomizers/shop_randomizer'
+require_relative 'randomizers/enemy_randomizer'
 require_relative 'rv/ooe_checker'
 
 class Randomizer
@@ -38,7 +39,6 @@ class Randomizer
     game = Game.new(@options, @game_folder, @backup_folder, @patch_folder, @checker, @mode, @rng) do |stages_done|
       yield [options_completed + (stages_done.to_f * 10.0), "Checking base files..."]
     end
-    reset_rng()
     options_string = @options.select{|k,v| v == true}.keys.join(", ")
 
     if [:normal, :auto_apply].include?(@mode)
@@ -56,7 +56,21 @@ class Randomizer
 
     options_completed += 50 # Initialization
 
+    if @options[:randomize_enemy_locations] and [:normal, :auto_apply].include?(@mode)
+      reset_rng()
+      yield [options_completed, "Placing enemies..."]
+      EnemyRandomizer.new(@rng, game, @logs)
+      options_completed += 2
+    end
+
+
+    if @options[:rv_arthrovertas_revenge] and [:normal, :auto_apply].include?(@mode)
+      reset_rng()
+      game.randomize_arthroverta()
+    end
+
     if @options[:randomize_pickups] and [:normal, :auto_apply].include?(@mode)
+      reset_rng()
       yield [options_completed, "Placing static pickups..."]
       PickupRandomizer.new(@rng, game, @logs) do |percent|
         yield [options_completed+percent*50.0, "Placing static pickups..."]
