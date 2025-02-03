@@ -4691,7 +4691,4 @@ end
   self.giants_rooms
   self.tristis_rooms
   self.argila_rooms
-
-  puts @@all_rooms.size
-  puts @@enemies_by_room.size
 end
