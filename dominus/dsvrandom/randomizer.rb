@@ -27,6 +27,7 @@ class Randomizer
     options[:version] = settings[:version]
     options[:modded_game] = settings[:modded_game]
     options[:rv_hint_cat_locations] = settings[:rv_hint_cat_locations]
+    options[:rv_enemy_randomizer_style] = settings[:rv_enemy_randomizer_style]
     @checker = OoEChecker.new(options, @rng)
     if seed.nil? || seed.empty?
       raise "No seed given"
@@ -51,6 +52,7 @@ class Randomizer
         log.puts "Selected options: #{options_string}"
         log.puts "Difficulty: #{@options[:rv_difficulty]}"
         log.puts "Hint cat locations: #{@options[:rv_hint_cat_locations]}"
+        log.puts "Enemy randomizer style: #{@options[:rv_enemy_randomizer_style]}"
       end
     end
 
