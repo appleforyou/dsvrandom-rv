@@ -2,6 +2,7 @@ class OoEChecker
 require_relative 'ooe_items'
 require_relative 'ooe_locations'
 require_relative 'ooe_logic'
+require_relative 'ooe_rooms'
 require 'set'
 
   attr_reader :current_items,
@@ -85,6 +86,7 @@ require 'set'
     #In hard mode it would always produce a Trick Sleeve if that option is enabled, so in pickup_randomizer.rb it's set to a non-progression item for that case.
     #if !options[:rv_trick_sleeve]
       Locations.locs.delete_if {|loc| loc[:id] == "02-00-04_07"}
+      Locations.locs_by_id.delete("02-00-04_07")
     #end
     @no_progression_locations = Locations.locs.select {|loc| loc[:type].include?("No Progression")}
     @all_droppable_pickups = @all_pickups.select {|key, item| (not item[:progression]) and (not OoEItems.undroppables.has_key?(key))}
@@ -135,6 +137,7 @@ require 'set'
     end
 
     @latest_accessible_locations = accessible_locations
+    #update_per_room_accessible_locations()
   end
 
   def get_accessible_locations_uncached
@@ -196,6 +199,18 @@ require 'set'
           @gear_level = tentative_gear_level(key).first
         end
         new_accessible_locations = get_accessible_locations_uncached().reject {|loc| loc[:type].include?("No Progression")}
+        #new_accessible_locations = test_progression.values.reject {|loc| loc[:type].include?("No Progression")}
+        #puts @base_accessible_locations.values - @latest_accessible_locations
+        #if false #new_accessible_locations.size != test_accessible_locations.size
+        #  result = [*(
+        #    (test_accessible_locations.size > new_accessible_locations.size)    \
+        #      ? test_accessible_locations - new_accessible_locations \
+        #      : new_accessible_locations - test_accessible_locations
+        #    ).flatten]
+        #  puts test_accessible_locations.size > new_accessible_locations.size ? "new has more" : "old has more"
+        #  puts result.inspect
+        #  raise @current_items.inspect
+        #end
       else
         new_accessible_locations = get_accessible_locations().reject {|loc| loc[:type].include?("No Progression")}
       end
@@ -458,5 +473,118 @@ require 'set'
     valid_ids = (0x6F..0x161).to_a
     valid_ids -= (0x6F..0x74).to_a
     return get_unplaced_non_progression_pickup_for_wooden_chest(valid_ids: valid_ids)
+  end
+
+  def logical_access(req, room)
+    if (room.room_req == false) or (req == false)
+      return false
+    elsif (room.room_req != true) and (not @logic.method(room.room_req)[])
+      return false
+    elsif (req != true) and (not @logic.method(req)[])
+      return false
+    else
+      return true
+    end
+  end
+
+  def test_progression(keep_rooms: false)
+    accessible_rooms = @base_accessible_rooms == nil ? {} : @base_accessible_rooms.dup
+    current_items = [].to_set
+    accessible_locations = @base_accessible_locations == nil ? {} : @base_accessible_locations.dup
+    if accessible_rooms.empty?
+      OoERooms.all_rooms.each do |key, room|
+        if not room.respond_to?(:is_starting_room)
+          next
+        end
+        if room.is_starting_room
+          accessible_rooms[room.subzone + " " + room.name] = room
+          room.items.each do |key, item|
+            loc_id = room.id + "_" + item.id
+            next if accessible_locations.has_key?(loc_id)
+            #current_items << room.subzone + " " + item.name + room.id + item.id
+            accessible_locations[loc_id] = Locations.locs_by_id[loc_id] unless Locations.locs_by_id[loc_id].nil?
+          end
+        end
+      end
+    else
+      accessible_rooms.each do |key, room|
+        room.items.each do |key, item|
+          loc_id = room.id + "_" + item.id
+          next if accessible_locations.has_key?(loc_id)
+          if logical_access(item.available, room)
+            #current_items << subroom.subzone + " " + item.name + room.id + item.id
+            accessible_locations[loc_id] = Locations.locs_by_id[loc_id] unless Locations.locs_by_id[loc_id].nil?
+          end
+        end
+      end
+    end
+    rooms_to_check = accessible_rooms.dup
+    while true
+      new_accessible_rooms = {}
+      rooms_to_check.each do |key, room|
+        room.doors.each do |door|
+          if door.available == false
+            #next
+          end
+          #puts door.dest_room
+          #puts room.name
+          target_room = OoERooms.all_rooms[door.dest_room]
+          if target_room.kind_of?(Array)
+            target_room.each do |subroom|
+              if accessible_rooms.has_key?(subroom.subzone + " " + subroom.name)
+                next
+              end
+              if /#{Regexp.quote(door.subroom)}/.match(subroom.name) and logical_access(door.available, subroom) and logical_access(subroom.room_req, subroom)
+                new_accessible_rooms[subroom.subzone + " " + subroom.name] = subroom
+                subroom.items.each do |key, item|
+                  loc_id = subroom.id + "_" + item.id
+                  next if accessible_locations.has_key?(loc_id)
+                  if logical_access(item.available, subroom)
+                    #current_items << subroom.subzone + " " + item.name + subroom.id + item.id
+                    accessible_locations[loc_id] = Locations.locs_by_id[loc_id] unless Locations.locs_by_id[loc_id].nil?
+                  end
+                end
+              end
+            end
+          else
+            if accessible_rooms.has_key?(target_room.subzone + " " + target_room.name)
+              next
+            end
+            if logical_access(door.available, target_room) and logical_access(target_room.room_req, target_room)
+              new_accessible_rooms[target_room.subzone + " " + target_room.name] = target_room
+              target_room.items.each do |key, item|
+                loc_id = target_room.id + "_" + item.id
+                next if accessible_locations.has_key?(loc_id)
+                if logical_access(item.available, target_room)
+                  #current_items << target_room.subzone + " " + item.name + target_room.id + item.id
+                  accessible_locations[loc_id] = Locations.locs_by_id[loc_id] unless Locations.locs_by_id[loc_id].nil?
+                end
+              end
+            end
+          end
+        end
+      end
+      new_accessible_rooms.each do |key, room|
+        if accessible_rooms.has_key?(key)
+          new_accessible_rooms.delete(key)
+        end
+      end
+      rooms_to_check = new_accessible_rooms.dup
+      accessible_rooms = accessible_rooms.merge(new_accessible_rooms)
+      if new_accessible_rooms.empty?
+        break
+      end
+    end
+    if keep_rooms
+      @base_accessible_rooms = accessible_rooms
+    end
+    #accessible_rooms.each do |key, room|
+      #puts room.subzone + " " + room.name
+    #end
+    return accessible_locations
+  end
+
+  def update_per_room_accessible_locations()
+    @base_accessible_locations = test_progression(keep_rooms: true)
   end
 end
