@@ -26,6 +26,7 @@ class RandomizerWindow < Qt::Dialog
   slots "difficulty_changed(int)"
   slots "version_changed(int)"
   slots "hints_changed(int)"
+  slots "enemy_style_changed(int)"
 
   def initialize
     super(nil, Qt::WindowMinimizeButtonHint)
@@ -49,6 +50,7 @@ class RandomizerWindow < Qt::Dialog
     connect(@ui.rv_difficulty, SIGNAL("activated(int)"), self, SLOT("difficulty_changed(int)"))
     connect(@ui.version_selector, SIGNAL("activated(int)"), self, SLOT("version_changed(int)"))
     connect(@ui.rv_hint_cat_locations, SIGNAL("activated(int)"), self, SLOT("hints_changed(int)"))
+    connect(@ui.rv_enemy_randomizer_style, SIGNAL("activated(int)"), self, SLOT("enemy_style_changed(int)"))
 
     Options.options.each_key do |option_name|
       connect(@ui.send(option_name), SIGNAL("clicked(bool)"), self, SLOT("update_settings()"))
@@ -110,6 +112,10 @@ class RandomizerWindow < Qt::Dialog
       @ui.rv_hint_cat_locations.setCurrentIndex(1)
       any_setting_changed = true
     end
+    if @ui.rv_enemy_randomizer_style.currentIndex() != 0
+      @ui.rv_enemy_randomizer_style.setCurrentIndex(0)
+      any_setting_changed = true
+    end
 
     if any_setting_changed
       update_settings()
@@ -152,6 +158,10 @@ class RandomizerWindow < Qt::Dialog
     hints_index = @ui.rv_hint_cat_locations.findText(@settings[:rv_hint_cat_locations].to_s)
     if hints_index != -1
       @ui.rv_hint_cat_locations.setCurrentIndex(hints_index)
+    end
+    enemy_style_index = @ui.rv_enemy_randomizer_style.findText(@settings[:rv_enemy_randomizer_style].to_s)
+    if enemy_style_index != -1
+      @ui.rv_enemy_randomizer_style.setCurrentIndex(enemy_style_index)
     end
   end
 
@@ -209,6 +219,7 @@ class RandomizerWindow < Qt::Dialog
     @settings[:rv_difficulty] = @ui.rv_difficulty.itemText(@ui.rv_difficulty.currentIndex)
     @settings[:version] = @ui.version_selector.itemText(@ui.version_selector.currentIndex)
     @settings[:rv_hint_cat_locations] = @ui.rv_hint_cat_locations.itemText(@ui.rv_hint_cat_locations.currentIndex)
+    @settings[:rv_enemy_randomizer_style] = @ui.rv_enemy_randomizer_style.itemText(@ui.rv_enemy_randomizer_style.currentIndex)
 
     save_settings()
   end
@@ -285,6 +296,11 @@ class RandomizerWindow < Qt::Dialog
 
   def hints_changed(hints_index)
     @ui.rv_hint_cat_locations.setCurrentIndex(hints_index)
+    update_settings()
+  end
+
+  def enemy_style_changed(enemy_style_index)
+    @ui.rv_enemy_randomizer_style.setCurrentIndex(enemy_style_index)
     update_settings()
   end
 
@@ -672,6 +688,7 @@ class RandomizerWindow < Qt::Dialog
     text.puts "Selected options: #{options_string}"
     text.puts "Difficulty: #{@settings[:rv_difficulty]}"
     text.puts "Hint cat locations: #{@settings[:rv_hint_cat_locations]}"
+    text.puts "Enemy randomizer style: #{@settings[:rv_enemy_randomizer_style]}"
 
     return text.string
   end
@@ -726,7 +743,7 @@ class RandomizerWindow < Qt::Dialog
     end
 
     if is_preset
-      match = text.match(/DSVRandom Options Preset, Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)/)
+      match = text.match(/DSVRandom Options Preset, Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)\s+Enemy randomizer style: (.+)/)
       if match.nil?
         raise "#{format_type.capitalize} is not in the proper format."
       end
@@ -737,8 +754,9 @@ class RandomizerWindow < Qt::Dialog
       options = $2.split(", ").map(&:to_sym)
       difficulty = $3
       hint_cat_locations = $4
+      enemy_randomizer_style = $5
     else
-      match = text.match(/Seed: ([#{VALID_SEED_CHARACTERS}]+), Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)/)
+      match = text.match(/Seed: ([#{VALID_SEED_CHARACTERS}]+), Randomizer version: (.+)\s+Selected options: (.+)\s+Difficulty: (.+)\s+Hint cat locations: (.+)\s+Enemy randomizer style: (.+)/)
       if match.nil?
         raise "#{format_type.capitalize} is not in the proper format."
       end
@@ -748,6 +766,7 @@ class RandomizerWindow < Qt::Dialog
       options = $3.split(", ").map(&:to_sym)
       difficulty = $4
       hint_cat_locations = $5
+      enemy_randomizer_style = $6
       game = "Order of Ecclesia"
     end
 
@@ -774,6 +793,7 @@ class RandomizerWindow < Qt::Dialog
     end
     @ui.rv_difficulty.setCurrentIndex(@ui.rv_difficulty.findText(difficulty))
     @ui.rv_hint_cat_locations.setCurrentIndex(@ui.rv_hint_cat_locations.findText(hint_cat_locations))
+    @ui.rv_enemy_randomizer_style.setCurrentIndex(@ui.rv_enemy_randomizer_style.findText(enemy_randomizer_style))
 
     @ui.tabWidget.currentIndex = 0
     update_settings()
