@@ -1,5 +1,7 @@
 module OoERooms
 
+require 'set'
+
 #The majority of this file's code is from 2019 made for the unfinished map randomizer project, and some aspects of it are obsolete, so it shouldn't be considered accurate for logic.
 #It still serves well enough for current needs for other purposes and will be edited gradually.
 
@@ -35,7 +37,10 @@ class Rm #Room map
               :is_important,
               :id,
               :traits,
-              :enemies
+              :enemies,
+              :room_req,
+              :room_type,
+              :items
 
   attr_accessor :map_x,
                 :map_y
@@ -44,22 +49,27 @@ class Rm #Room map
     castle_subzones = ["Castle Entrance", "Library", "Underground Labyrinth", "Barracks", "Mechanical Tower", "Arms Depot", "Forsaken Cloister", "Final Approach"]
     if castle_subzones.include?(subzone)
       @zone = "Dracula's Castle"
-      @subzone = subzone
     else
       @zone = subzone
     end
+    @subzone = subzone
     @doors = entities.select {|e| e.is_a?(Door)}
     @enemies = {}
     entities.select {|e| e.kind_of?(Enemy)}.each do |e|
       @enemies[e.id] = e
     end
+    @items = {}
+    entities.select {|e| e.kind_of?(Item)}.each do |e|
+      @items[e.id] = e
+    end
     @id = id
     @subroom = room == nil ? nil : subroom
     @room = room == nil ? subroom : room
-    @name = @room
+    @name = subroom == nil ? room : subroom
     @width = width
     @height = height
     @room_type = room_type
+    @room_req = room_req
     @is_important = is_important
     if !traits.kind_of?(Array)
       traits = [traits]
@@ -106,7 +116,10 @@ end
 class Door
   attr_reader :direction,
               :width,
-              :height
+              :height,
+              :dest_room,
+              :subroom,
+              :available
 
   def initialize(direction, dest_room, available = true, subroom: nil, width: 1, height: 1)
     @direction = direction
@@ -119,6 +132,10 @@ class Door
 end
 
 class Item
+  attr_reader :name,
+              :available,
+              :id
+
   def initialize(name, available = true, lock: nil, escape: nil, id: nil)
     @name = name
     @available = available
@@ -195,7 +212,7 @@ end
         ),
       Rm.new("Front Door", "Castle Entrance", [
           Door.new(:left, "00-0C-04"),
-          Door.new(:right, "00-00-01", "Bottom"),
+          Door.new(:right, "00-00-01", subroom: "Bottom"),
           Enemy.new("Peeping Eye", id: "01", type: ["Seeker", "Vanguard", "Floor"]),
           Enemy.new("Blood Skeleton", id: "02", type: "Persistent"),
           Enemy.new("Gargoyle", id: "03", type: ["Seeker", "Floor"]),
@@ -204,30 +221,30 @@ end
         "00-00-00", width: 3, traits: "Spacious"
         ),
       Rm.new("Lobby Top", "Castle Entrance", [
-          Item.new("HEART Max Up", "highJump"),
+          Item.new("HEART Max Up", :highJump, id: "00"),
           Door.new(:down, "00-00-01", subroom: "Bottom", width: 2),
-          Door.new(:right, "00-00-03", "highJump", subroom: "Bottom"),
+          Door.new(:right, "00-00-03", :highJump, subroom: "Bottom"),
           Enemy.new("Peeping Eye", id: "02", type: ["Seeker", "Floor", "Separated"]),
           Enemy.new("Black Panther", id: "03", type: ["Challenger", "Separated"]),
           Enemy.new("Flea Man", id: "04", type: ["Nuisance", "Floor", "Semi-Enclosed", "Vanguard"]),
           ],
-        "00-00-01", "Lobby", width: 2
+        "00-00-01", "Lobby", width: 2, room_req: :castleEntryGear
         ),
       Rm.new("Lobby Bottom", "Castle Entrance", [
           Door.new(:left, "00-00-00"),
-          Door.new(:up, "00-00-01", "highJump", subroom: "Top", width: 2),
+          Door.new(:up, "00-00-01", :highJump, subroom: "Top", width: 2),
           Door.new(:right, "00-00-02"),
           Enemy.new("Black Panther", id: "01", type: ["Vanguard", "Semi-Enclosed"]),
           Enemy.new("Flea Man", id: "05", type: ["Nuisance", "Floor"]),
           Enemy.new("Flea Man", id: "06", type: ["Nuisance", "Floor", "Separated", "CollisionIssue"]),
           ],
-        "00-00-01", "Lobby", width: 2
+        "00-00-01", "Lobby", width: 2, room_req: :castleEntryGear
         ),
 =begin
       Rm.new("Lobby", "Castle Entrance", [
           Door.new(:left, "00-00-00"),
-          Item.new("HEART Max Up", "highJump"),
-          Door.new(:right, "00-00-03", "highJump", height: 2),
+          Item.new("HEART Max Up", :highJump),
+          Door.new(:right, "00-00-03", :highJump, height: 2),
           Door.new(:right, "00-00-02"),
           Enemy.new("Black Panther", id: "01", type: ["Vanguard", "Semi-Enclosed"]),
           Enemy.new("Peeping Eye", id: "02", type: ["Seeker", "Floor", "Separated"]),
@@ -246,9 +263,9 @@ end
         ),
       Rm.new("Tasty Stairs Top", "Castle Entrance", [
           Door.new(:left, "00-00-04", subroom: "Bottom"),
-          Item.new("Tasty Meat", lock: "highJump", escape: "Bottom"),
+          Item.new("Tasty Meat", lock: :highJump, escape: "Bottom", id: "01"),
           Door.new(:down, "00-00-03", subroom: "Bottom"),
-          Door.new(:right, "00-00-09"),
+          Door.new(:right, "00-00-09", subroom: "Left"),
           Enemy.new("Blood Skeleton", id: "03", type: ["Persistent", "Enclosed"]),
           Enemy.new("Blood Skeleton", id: "04", type: ["Persistent", "Separated"]),
           ],
@@ -256,7 +273,7 @@ end
         ),
       Rm.new("Tasty Stairs Bottom", "Castle Entrance", [
           Door.new(:left, "00-00-01", subroom: "Top"),
-          Door.new(:up, "00-00-03", "highJump", subroom: "Top"),
+          Door.new(:up, "00-00-03", :highJump, subroom: "Top"),
           Enemy.new("Blood Skeleton", id: "02", type: ["Persistent", "Enclosed"]),
           ],
         "00-00-03", "Tasty Stairs"
@@ -265,7 +282,7 @@ end
       Rm.new("Tasty Stairs", "Castle Entrance", [
           Door.new(:left, "00-00-04", height: 3),
           Door.new(:left, "00-00-01"),
-          Item.new("Tasty Meat", lock: "highJump", escape: "Bottom"),
+          Item.new("Tasty Meat", lock: :highJump, escape: "Bottom"),
           Door.new(:right, "00-00-09", height: 3),
           Enemy.new("Blood Skeleton", id: "02", type: ["Persistent", "Enclosed"]),
           Enemy.new("Blood Skeleton", id: "03", type: ["Persistent", "Enclosed"]),
@@ -275,9 +292,9 @@ end
         ),
 =end
       Rm.new("West Fork Top", "Castle Entrance", [
-          Door.new(:left, "00-00-05", "highJump"),
+          Door.new(:left, "00-00-05", :highJump),
           Door.new(:down, "00-00-04", subroom: "Bottom", width: 2),
-          Item.new("White Drops", "highJump"),
+          Item.new("White Drops", :highJump, id: "01"),
           Enemy.new("Black Panther", id: "03", type: ["Challenger", "Wall"]),
           Enemy.new("Peeping Eye", id: "04", type: ["Seeker", "Floor"]),
           ],
@@ -292,8 +309,8 @@ end
         ),
 =begin
       Rm.new("West Fork", "Castle Entrance", [
-          Door.new(:left, "00-00-05", "highJump", height: 2),
-          Item.new("White Drops", "highJump"),
+          Door.new(:left, "00-00-05", :highJump, height: 2),
+          Item.new("White Drops", :highJump),
           Door.new(:right, "00-00-03"),
           Enemy.new("Black Panther", id: "02", type: ["Challenger", "Semi-Enclosed", "Wall"]),
           Enemy.new("Black Panther", id: "03", type: ["Challenger", "Wall"]),
@@ -319,7 +336,7 @@ end
         "00-00-06", "West Bend", height: 2
         ),
       Rm.new("West Bend Bottom", "Castle Entrance", [
-          Door.new(:up, "00-00-06", "highJump", subroom: "Top"),
+          Door.new(:up, "00-00-06", :highJump, subroom: "Top"),
           Door.new(:right, "00-00-05"),
           Enemy.new("Black Panther", id: "00", type: ["Challenger", "Separated", "Enclosed"]),
           ],
@@ -355,22 +372,22 @@ end
         ),
       Rm.new("East Fork Left", "Castle Entrance", [
           Door.new(:left, "00-00-07"),
-          Door.new(:right, "00-00-09", "Paries", subroom: "Right")
+          Door.new(:right, "00-00-09", :hasParies, subroom: "Right")
           ],
         "00-00-09", "East Fork"
         ),
       Rm.new("East Fork Right", "Castle Entrance", [
-          Door.new(:left, "00-00-09", "Paries", subroom: "Left"),
-          Item.new("HP Max Up"),
+          Door.new(:left, "00-00-09", :hasParies, subroom: "Left"),
+          Item.new("HP Max Up", id: "00"),
           Door.new(:right, "00-01-00")
           ],
-        "00-00-09", "East Fork"
+        "00-00-09", "East Fork", room_req: :castleEntranceEastGear
         ),
 =begin
       Rm.new("East Fork", "Castle Entrance", [
-          Door.new(:left, "00-00-07", "Paries"),
+          Door.new(:left, "00-00-07", :hasParies),
           Item.new("HP Max Up"),
-          Door.new(:right, "00-01-00", "Paries")
+          Door.new(:right, "00-01-00", :hasParies)
           ],
         "00-00-09", width: 2
         ),
@@ -389,7 +406,7 @@ end
           Enemy.new("Black Panther", id: "06", type: "Challenger"),
           Enemy.new("Blood Skeleton", id: "07", type: ["Persistent", "Semi-Enclosed"]),
           ],
-        "00-01-01", width: 2, height: 2
+        "00-01-01", width: 2, height: 2, room_req: :castleEntranceEastGear
         ),
       Rm.new("Zombie Hall", "Castle Entrance", [
           Door.new(:left, "00-01-03"),
@@ -405,7 +422,7 @@ end
         "00-01-02", width: 4, traits: "Spacious"
         ),
       Rm.new("Zombie to Labyrinth", "Castle Entrance", [
-          Door.new(:right, "00-01-02", "highJump", height: 3),
+          Door.new(:right, "00-01-02", :highJump, height: 3),
           Door.new(:right, "00-01-04"),
           Enemy.new("Peeping Eye", id: "01", type: ["Seeker", "Floor"]),
           Enemy.new("Peeping Eye", id: "02", type: ["Seeker", "Floor", "Semi-Enclosed", "Platform", "Separated"]),
@@ -421,14 +438,14 @@ end
         ),
       Rm.new("Valkyrie Greaves Pit", "Castle Entrance", [
           Door.new(:left, "00-01-02", height: 2),
-          Item.new("Valkyrie Greaves"),
+          Item.new("Valkyrie Greaves", id: "00"),
           Door.new(:right, "00-01-06", height: 2),
           Enemy.new("Blood Skeleton", id: "05", type: "Persistent"),
           Enemy.new("Black Panther", id: "06", type: ["Challenger", "Separated", "Semi-Enclosed"]),
           Enemy.new("Peeping Eye", id: "07", type: ["Seeker", "Floor", "Platform", "Separated"]),
           Enemy.new("Peeping Eye", id: "08", type: ["Seeker", "Floor", "Platform", "Separated"]),
           ],
-        "00-01-05", width: 2, height: 2, room_req: "midDistance"
+        "00-01-05", width: 2, height: 2
         ),
       Rm.new("East Gargoyles", "Castle Entrance", [
           Door.new(:left, "00-01-05"),
@@ -453,7 +470,7 @@ end
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-00", "Northwest Novas", height: 4, room_req: "beatNovas"
+        "00-02-00", "Northwest Novas", height: 4, room_req: :beatNovas
         ),
       Rm.new("Northwest Novas Bottom", "Underground Labyrinth", [
           Door.new(:left, "00-02-01"),
@@ -471,7 +488,7 @@ end
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-00", height: 5, room_req: "beatNovas"
+        "00-02-00", height: 5, room_req: :beatNovas
         ),
 =end
       Rm.new("First Fork North", "Underground Labyrinth", [
@@ -481,10 +498,10 @@ end
           Enemy.new("Nova Skeleton", id: "01", type: "Range"),
           Enemy.new("Gashida", id: "02", type: "Vanguard"),
           ],
-        "00-02-01", width: 4, room_req: "highJump"
+        "00-02-01", width: 4, room_req: :highJump
         ),
       Rm.new("Vol Ignis Room", "Underground Labyrinth", [
-          Item.new("Vol Ignis"),
+          Item.new("Vol Ignis", :highJump, id: "00"),
           Door.new(:right, "00-02-03", subroom: "Top")
           ],
         "00-02-02", width: 4
@@ -523,7 +540,7 @@ end
 =end
       Rm.new("First Fork South", "Underground Labyrinth", [
           Door.new(:left, "00-02-03", subroom: "Top"),
-          Door.new(:up, "00-02-00", "highJump", subroom: "Bottom", width: 4),
+          Door.new(:up, "00-02-00", :highJump, subroom: "Bottom", width: 4),
           Enemy.new("Gurkha Master", id: "01", type: "Challenger"),
           Enemy.new("Gurkha Master", id: "02", type: "Challenger"),
           ],
@@ -536,11 +553,11 @@ end
           Enemy.new("Gurkha Master", id: "06", type: "Guard"),
           Enemy.new("Gurkha Master", id: "07", type: "Guard"),
           ],
-        "00-02-05", width: 4, room_req: "highJump"
+        "00-02-05", width: 4, room_req: :highJump
         ),
       Rm.new("Second Fork Attic", "Underground Labyrinth", [
           Door.new(:down, "00-02-07"),
-          Item.new("Mercury Boots"),
+          Item.new("Mercury Boots", id: "00"),
           Enemy.new("Polkir", id: "01", type: "Nuisance"),
           Enemy.new("Polkir", id: "02", type: "Nuisance"),
           ],
@@ -554,17 +571,17 @@ end
           Enemy.new("Gashida", id: "01", type: "Challenger"),
           Enemy.new("Gashida", id: "02", type: "Vanguard"),
           ],
-        "00-02-07", width: 4, room_req: "highJump"
+        "00-02-07", width: 4, room_req: :highJump
         ),
       Rm.new("Second Fork South", "Underground Labyrinth", [
-          Item.new("MP Max Up"),
-          Door.new(:up, "00-02-05", "highJump"),
+          Item.new("MP Max Up", id: "00"),
+          Door.new(:up, "00-02-05"),
           Door.new(:right, "00-02-09", subroom: "Top"),
           Enemy.new("Polkir", id: "04", type: "Nuisance"),
           Enemy.new("Gurkha Master", id: "05", type: "Guard"),
           Enemy.new("Gurkha Master", id: "06", type: ["Guard", "Vanguard"]),
           ],
-        "00-02-08", width: 4
+        "00-02-08", width: 4, room_req: :highJump
         ),
       Rm.new("Southwest Novas Top", "Underground Labyrinth", [
           Door.new(:left, "00-02-08"),
@@ -580,7 +597,7 @@ end
           Enemy.new("Nova Skeleton", id: "01", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-09", "Southwest Novas", room_req: "beatNovas"
+        "00-02-09", "Southwest Novas", room_req: :beatNovas
         ),
       Rm.new("Southwest Novas Bottom", "Underground Labyrinth", [
           Door.new(:left, "00-02-0A", height: 3),
@@ -620,7 +637,7 @@ end
           Door.new(:left, "00-02-1C"),
           Door.new(:right, "00-02-0D")
           ],
-        "00-02-0C", width: 2, room_req: "beatBlackmore", is_important: true
+        "00-02-0C", width: 2, room_req: :beatBlackmoreGear, is_important: true
         ),
       Rm.new("Blackmore Exit", "Underground Labyrinth", [
           Door.new(:left, "00-02-0C"),
@@ -646,26 +663,26 @@ end
           Door.new(:right, "00-02-1D"),
           Enemy.new("Hammer Shaker", id: "00", type: "Vanguard"),
           ],
-        "00-02-0F", width: 2, room_req: "highJump"
+        "00-02-0F", width: 2, room_req: :highJump
         ),
       Rm.new("Block Puzzle Entrance", "Underground Labyrinth", [
           Door.new(:left, "00-02-1D"),
           Door.new(:down, "00-02-11", width: 2),
           Enemy.new("Hammer Shaker", id: "00", type: "Vanguard"),
           ],
-        "00-02-10", width: 2, room_req: "highJump"
+        "00-02-10", width: 2, room_req: :highJump
         ),
       Rm.new("Northeast Novas", "Underground Labyrinth", [
           Door.new(:left, "00-02-13", subroom: "Top", height: 2),
           Door.new(:up, "00-02-10"),
-          Item.new("White Drops"),
+          Item.new("White Drops", id: "06"),
           Enemy.new("Nova Skeleton", id: "00", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Polkir", id: "01", type: ["Nuisance", "Enclosed", "Separated", "Passthrough"]),
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "04", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-11", height: 5, room_req: "beatNovas"
+        "00-02-11", height: 5, room_req: :beatNovas
         ),
       Rm.new("Lapiste Entrance", "Underground Labyrinth", [
           Door.new(:left, "00-02-14"),
@@ -673,7 +690,7 @@ end
           Enemy.new("Gashida", id: "00", type: "Vanguard"),
           Enemy.new("Nova Skeleton", id: "01", type: ["Range", "Vanguard"]),
           ],
-        "00-02-12", width: 2, room_req: "highJump"
+        "00-02-12", width: 2, room_req: :highJump
         ),
       Rm.new("Lapiste Novas Top", "Underground Labyrinth", [
           Door.new(:down, "00-02-13", subroom: "Bottom"),
@@ -681,7 +698,7 @@ end
           Enemy.new("Nova Skeleton", id: "01", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-13", "Lapiste Novas", height: 2, room_req: "beatNovas"
+        "00-02-13", "Lapiste Novas", height: 2, room_req: :beatNovas
         ),
       Rm.new("Lapiste Novas Bottom", "Underground Labyrinth", [
           Door.new(:left, "00-02-12", height: 3),
@@ -702,19 +719,19 @@ end
           Enemy.new("Nova Skeleton", id: "01", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-13", height: 5, room_req: "beatNovas"
+        "00-02-13", height: 5, room_req: :beatNovas
         ),
 =end
       Rm.new("Lapiste Room", "Underground Labyrinth", [
-          Item.new("Lapiste", "lapistePuzzle"),
-          Item.new("Star Ring"),
+          Item.new("Lapiste", :lapistePuzzle, id: "04"),
+          Item.new("Star Ring", id: "05"),
           Door.new(:right, "00-02-12")
           ],
         "00-02-14", height: 5
         ),
       Rm.new("Deadend Entrance Novas", "Underground Labyrinth", [
           Door.new(:left, "00-02-13", subroom: "Bottom"),
-          Door.new(:right, "00-02-16"),
+          Door.new(:right, "00-02-16", subroom: "Bottom"),
           Enemy.new("Nova Skeleton", id: "06", type: ["Range", "Vanguard"]),
           Enemy.new("Nova Skeleton", id: "07", type: "Range"),
           Enemy.new("Nova Skeleton", id: "08", type: ["Range", "Vanguard"]),
@@ -730,12 +747,12 @@ end
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "04", type: ["Range", "Enclosed", "Separated"]),
           ],
-        "00-02-16", "Deadend Novas", height: 3, room_req: "beatNovas"
+        "00-02-16", "Deadend Novas", height: 3, room_req: :beatNovas
         ),
       Rm.new("Deadend Novas Bottom", "Underground Labyrinth", [
           Door.new(:left, "00-02-15", height: 2),
-          Door.new(:up, "00-02-16", "beatNovas", subroom: "Top"),
-          Door.new(:down, "00-02-19", "breakFloor", subroom: "Left"),
+          Door.new(:up, "00-02-16", :beatNovas, subroom: "Top"),
+          Door.new(:down, "00-02-19", subroom: "Left"),
           Enemy.new("Flea Man", id: "00", type: ["Nuisance", "Floor", "Enclosed", "Separated"]),
           Enemy.new("Nova Skeleton", id: "01", type: ["Range", "Vanguard", "Enclosed"]),
           ],
@@ -757,13 +774,13 @@ end
 =end
       Rm.new("Deadend Hearts", "Underground Labyrinth", [
           Door.new(:left, "00-02-16", subroom: "Top"),
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", id: "00"),
           Enemy.new("Red Smasher", id: "04", type: "Challenger"),
           ],
-        "00-02-17", width: 2, room_req: "highJump"
+        "00-02-17", width: 2, room_req: :highJump
         ),
       Rm.new("Basement Potion Room", "Underground Labyrinth", [
-          Item.new("Super Potion"),
+          Item.new("Super Potion", id: "00"),
           Door.new(:right, "00-02-19", subroom: "Left")
           ],
         "00-02-18"
@@ -777,10 +794,10 @@ end
         ),
       Rm.new("Basement Right", "Underground Labyrinth", [
           Door.new(:left, "00-02-19", subroom: "Left"),
-          Item.new("Felicem Fio"),
+          Item.new("Felicem Fio", id: "06"),
           Door.new(:up, "00-02-1A", width: 3)
           ],
-        "00-02-19", "Basement", width: 3, room_req: "Paries"
+        "00-02-19", "Basement", width: 3, room_req: :hasParies
         ),
 =begin
       Rm.new("Basement", "Underground Labyrinth", [
@@ -789,7 +806,7 @@ end
           Item.new("Felicem Fio"),
           Door.new(:up, width: 4)
           ],
-        "00-02-19", width: 4, room_req: "Paries"
+        "00-02-19", width: 4, room_req: :hasParies
         ),
 =end
       Rm.new("Basement Novas", "Underground Labyrinth", [
@@ -803,7 +820,7 @@ end
         ),
       Rm.new("Basement Exit", "Underground Labyrinth", [
           Door.new(:left, "00-02-1A"),
-          Item.new("Rapidus Fio")
+          Item.new("Rapidus Fio", id: "01")
           ],
         "00-02-1B", is_important: true
         ),
@@ -818,12 +835,12 @@ end
           Door.new(:left, "00-02-0F", height: 2),
           Door.new(:right, "00-02-10", height: 2)
           ],
-        "00-02-1D", height: 2, room_req: "highJump"
+        "00-02-1D", height: 2, room_req: :highJump
         ),
       ],[
     #Library
       Rm.new("Entrance", "Library", [
-          Door.new(:left, "00-03-01", "highJump", height: 3),
+          Door.new(:left, "00-03-01", :highJump, height: 3),
           Door.new(:left, "00-00-08"),
           Enemy.new("Peeping Eye", id: "03", type: ["Seeker", "Floor", "Platform", "Passthrough"]),
           Enemy.new("Peeping Eye", id: "04", type: ["Seeker", "Floor", "Platform", "Passthrough"]),
@@ -839,7 +856,7 @@ end
         "00-03-01", width: 2
         ),
       Rm.new("West Bend Top", "Library", [
-          Item.new("HP Max Up", "smallDistance"),
+          Item.new("HP Max Up", id: "00"), #smallDistance
           Door.new(:right, "00-03-03", height: 2),
           Door.new(:down, "00-03-02", subroom: "Bottom"),
           Enemy.new("Peeping Eye", id: "03", type: ["Seeker", "Floor", "Platform", "Passthrough"]),
@@ -847,7 +864,7 @@ end
         "00-03-02", "West Bend", height: 2
         ),
       Rm.new("West Bend Bottom", "Library", [
-          Door.new(:up, "00-03-02", "highJump", subroom: "Top"),
+          Door.new(:up, "00-03-02", :highJump, subroom: "Top"),
           Door.new(:right, "00-03-01"),
           Enemy.new("Draculina", id: "02", type: ["Nuisance", "Floor", "Vanguard"]),
           ],
@@ -855,8 +872,8 @@ end
         ),
 =begin
       Rm.new("West Bend", "Library", [
-          Item.new("HP Max Up", "highJump"),
-          Door.new(:right, "highJump", height: 3),
+          Item.new("HP Max Up", :highJump),
+          Door.new(:right, :highJump, height: 3),
           Door.new(:right)
           ],
         "00-03-02", height: 3
@@ -871,14 +888,14 @@ end
         "00-03-03", width: 2
         ),
       Rm.new("Central Wallman Approach", "Library", [
-          Door.new(:up, "00-03-05", "highJump"),
+          Door.new(:up, "00-03-05", :highJump),
           Door.new(:down, "00-03-03", width: 2),
           Enemy.new("Draculina", id: "01", type: ["Nuisance", "Floor", "Vanguard"]),
           ],
         "00-03-04", width: 2
         ),
       Rm.new("North Wallman Approach", "Library", [
-          Door.new(:up, "00-03-07", "highJump", width: 2),
+          Door.new(:up, "00-03-07", :highJump, width: 2),
           Door.new(:down, "00-03-04"),
           Enemy.new("Tin Man", id: "01", type: "Vanguard"),
           ],
@@ -891,7 +908,7 @@ end
         ),
       Rm.new("Wallman Lobby", "Library", [
           Door.new(:left, "00-03-06"),
-          Item.new("MP Max Up", "smallDIstance"),
+          Item.new("MP Max Up", id: "00"), #smallDistance
           Door.new(:down, "00-03-05", width: 2),
           Door.new(:right, "00-03-09", subroom: "Left", height: 2),
           Door.new(:right, "00-03-08"),
@@ -908,24 +925,24 @@ end
         ),
       Rm.new("Wallman Room Left", "Library", [
           Door.new(:left, "00-03-07"),
-          Item.new("Paries"),
-          Door.new(:right, "00-03-09", "Paries", subroom: "Right")
+          Item.new("Paries", id: "02"),
+          Door.new(:right, "00-03-09", :hasParies, subroom: "Right")
           ],
         "00-03-09", "Wallman Room"
         ),
       Rm.new("Wallman Room Right", "Library", [
-          Door.new(:left, "00-03-09", "Paries", subroom: "Left"),
-          Item.new("Melio Confodere"),
+          Door.new(:left, "00-03-09", :hasParies, subroom: "Left"),
+          Item.new("Melio Confodere", id: "05"),
           Door.new(:right, "00-03-0A")
           ],
-        "00-03-09", "Wallman Room"
+        "00-03-09", "Wallman Room", room_req: :castleEntranceEastGear
         ),
 =begin
        Rm.new("Wallman Room", "Library", [
-          Door.new(:left, "Paries"),
-          Item.new("Paries"),
+          Door.new(:left, :hasParies),
+          Item.new(:hasParies),
           Item.new("Melio Confodere"),
-          Door.new(:right, "Paries")
+          Door.new(:right, :hasParies)
           ],
         "00-03-09", width: 2
         ),
@@ -936,7 +953,7 @@ end
           Enemy.new("Draculina", id: "01", type: ["Nuisance", "Floor", "Vanguard"]),
           Enemy.new("Tin Man", id: "02", type: "Vanguard"),
           ],
-        "00-03-0A", width: 2, room_req: "highJump"
+        "00-03-0A", width: 2, room_req: :castleEntranceEast
         ),
       Rm.new("Volaticus Shortcut", "Library", [
           Door.new(:down, "00-03-0C", width: 2),
@@ -947,7 +964,7 @@ end
         "00-03-0B", width: 2, height: 2
         ),
       Rm.new("Shorcut Hub", "Library", [
-          Door.new(:left, "00-03-0A", "highJump", height: 2),
+          Door.new(:left, "00-03-0A", :highJump, height: 2),
           Door.new(:up, "00-03-0B", "hasFlight", width: 2),
           Door.new(:down, "00-03-0D"),
           Enemy.new("Black Panther", id: "01", type: "Vanguard"),
@@ -964,7 +981,7 @@ end
         "00-03-0D", width: 2
         ),
       Rm.new("Wallman Descent", "Library", [
-          Door.new(:left, "00-03-0D", "highJump", height: 3),
+          Door.new(:left, "00-03-0D", :highJump, height: 3),
           Door.new(:left, "00-04-00"),
           Door.new(:right, "00-03-0F"),
           Enemy.new("Peeping Eye", id: "00", type: ["Seeker", "Floor", "Platform", "Passthrough"]),
@@ -982,10 +999,10 @@ end
           Enemy.new("White Fomor", id: "06", type: ["Nuisance", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("White Fomor", id: "07", type: ["Nuisance", "Vanguard"]),
           ],
-        "00-03-0F", width: 5, room_req: "highJump"
+        "00-03-0F", width: 5, room_req: :highJump
         ),
       Rm.new("East Corridor Descent", "Library", [
-          Door.new(:left, "00-03-0F", "highJump", height: 3),
+          Door.new(:left, "00-03-0F", :highJump, height: 3),
           Door.new(:left, "00-03-11"),
           Door.new(:right, "00-09-02"),
           Enemy.new("Draculina", id: "03", type: ["Nuisance", "Floor", "Platform", "Passthrough"]),
@@ -1015,7 +1032,7 @@ end
         "00-04-01", width: 2, height: 2
         ),
       Rm.new("Kitchen Entrance Bottom", "Library", [
-          Door.new(:up, "00-04-01", "highJump", subroom: "Top"),
+          Door.new(:up, "00-04-01", :highJump, subroom: "Top"),
           Door.new(:down, "00-04-03", width: 2),
           Enemy.new("Mad Butcher", id: "01", type: "Challenger"),
           Enemy.new("Mad Butcher", id: "02", type: "Vanguard"),
@@ -1034,14 +1051,14 @@ end
         ),
 =end
       Rm.new("Hidden Room", "Library", [
-          Item.new("Hanged Man Ring"),
-          Item.new("Refectio"),
+          Item.new("Hanged Man Ring", id: "01"),
+          Item.new("Refectio", id: "00"),
           Door.new(:right, "00-04-01", subroom: "Top")
           ],
         "00-04-02", width: 2
         ),
       Rm.new("West Kitchen Robots", "Library", [
-          Door.new(:up, "00-04-01", "highJump", subroom: "Bottom", width: 2),
+          Door.new(:up, "00-04-01", :highJump, subroom: "Bottom", width: 2),
           Door.new(:down, "00-04-04"),
           Enemy.new("Tin Man", id: "00", type: "Vanguard"),
           Enemy.new("Tin Man", id: "01", type: "Challenger"),
@@ -1049,7 +1066,7 @@ end
         "00-04-03", width: 2
         ),
       Rm.new("West Kitchen Bats", "Library", [
-          Door.new(:up, "00-04-03", "highJump"),
+          Door.new(:up, "00-04-03", :highJump),
           Door.new(:right, "00-04-05"),
           Enemy.new("Draculina", id: "00", type: ["Nuisance", "Floor"]),
           Enemy.new("Draculina", id: "01", type: ["Nuisance", "Floor"]),
@@ -1057,7 +1074,7 @@ end
         "00-04-04", width: 2
         ),
       Rm.new("Central Kitchen", "Library", [
-          Door.new(:left, "00-04-04", "highJump", height: 2),
+          Door.new(:left, "00-04-04", :highJump, height: 2),
           Door.new(:right, "00-04-06"),
           Enemy.new("Mad Butcher", id: "00", type: ["Challenger", "WallR"]),
           Enemy.new("Mad Butcher", id: "01", type: "Challenger"),
@@ -1071,34 +1088,34 @@ end
           Enemy.new("Tin Man", id: "00", type: "Challenger"),
           Enemy.new("Tin Man", id: "01", type: "Challenger"),
           ],
-        "00-04-06", width: 2, room_req: "highJump"
+        "00-04-06", width: 2, room_req: :highJump
         ),
       Rm.new("Custos Descent Top", "Library", [
           Door.new(:left, "00-04-06", height: 2),
           Door.new(:down, "00-04-07", subroom: "Bottom"),
-          Item.new("Cream Puff"),
+          Item.new("Cream Puff", id: "03"),
           Enemy.new("Mad Butcher", id: "00", type: ["Challenger", "Platform"]),
           Enemy.new("Mad Butcher", id: "01", type: ["Challenger", "Platform"]),
           ],
         "00-04-07", "Custos Descent", height: 2
         ),
       Rm.new("Custos Descent Bottom", "Library", [
-          Door.new(:up, "00-04-07", "highJump", subroom: "Top"),
+          Door.new(:up, "00-04-07", :highJump, subroom: "Top"),
           Door.new(:left, "00-04-08"),
           ],
         "00-04-07", "Custos Descent", height: 3
         ),
 =begin
       Rm.new("Custos Descent", "Library", [
-          Door.new(:left, "highJump", height: 3),
+          Door.new(:left, :highJump, height: 3),
           Door.new(:left),
-          Item.new("Cream Puff", "highJump")
+          Item.new("Cream Puff", :highJump)
           ],
         "00-04-07", height: 3
         ),
 =end
       Rm.new("Custos Room", "Library", [
-          Item.new("Dextro Custos"),
+          Item.new("Dextro Custos", id: "00"),
           Door.new(:right, "00-04-07", subroom: "Bottom")
           ],
         "00-04-08", width: 2
@@ -1106,8 +1123,8 @@ end
       ],[
     #Barracks
       Rm.new("Heart Room", "Barracks", [
-          Item.new("HEART Max Up"),
-          Door.new(:right, "00-05-01")
+          Item.new("HEART Max Up", id: "00"),
+          Door.new(:right, "00-05-01", subroom: "Top")
           ],
         "00-05-00"
         ),
@@ -1120,8 +1137,8 @@ end
         "00-05-01", "Northwest Big Stairs", width: 2
         ),
       Rm.new("Northwest Big Stairs Bottom", "Barracks", [
-          Door.new(:up, "00-05-01", "highJump", subroom: "Top"),
-          Door.new(:down, "00-05-03"),
+          Door.new(:up, "00-05-01", :highJump, subroom: "Top"),
+          Door.new(:down, "00-05-03", subroom: "Top"),
           Enemy.new("Nova Skeleton", id: "04", type: ["Range", "Semi-Enclosed"]),
           Enemy.new("Nova Skeleton", id: "05", type: ["Range", "Semi-Enclosed", "Separated", "WallR"]),
           Enemy.new("Nova Skeleton", id: "06", type: ["Range", "Semi-Enclosed", "Separated"]),
@@ -1145,7 +1162,7 @@ end
         ),
       Rm.new("Southwest Big Stairs Top", "Barracks", [
           Door.new(:left, "00-05-02"),
-          Door.new(:up, "00-05-01", "highJump", subroom: "Bottom"),
+          Door.new(:up, "00-05-01", :highJump, subroom: "Bottom"),
           Door.new(:down, "00-05-03", width: 2, subroom: "Bottom"),
           Enemy.new("Tin Man", id: "03", type: ["Challenger", "Enclosed", "Wall", "CollisionIssue"]),
           Enemy.new("Tin Man", id: "04", type: ["Challenger", "Semi-Enclosed", "WallR", "CollisionIssue"]),
@@ -1154,35 +1171,35 @@ end
         ),
       Rm.new("Southwest Big Stairs Bottom", "Barracks", [
           Door.new(:left, "00-05-04", subroom: "Top"),
-          Door.new(:up, "00-05-03", "smallDistance", subroom: "Top", width: 2),
+          Door.new(:up, "00-05-03", subroom: "Top", width: 2), #smallDistance
           Door.new(:right, "00-05-08"),
           Enemy.new("Nova Skeleton", id: "02", type: ["Range", "Vanguard", "Enclosed"]),
           ],
-        "00-05-03", "Southwest Big Stairs", width: 2, room_req: "beatNovas"
+        "00-05-03", "Southwest Big Stairs", width: 2, room_req: :beatNovas
         ),
 =begin
       Rm.new("Southwest Big Stairs", "Barracks", [
           Door.new(:left, height: 2),
           Door.new(:left),
-          Door.new(:up, "highJump"),
+          Door.new(:up, :highJump),
           Door.new(:right)
           ],
-        "00-05-03", width: 2, height: 2, room_req: "beatNovas"
+        "00-05-03", width: 2, height: 2, room_req: :beatNovas
         ),
 =end
       Rm.new("Entrance Stairs Top", "Barracks", [
           Door.new(:down, "00-05-04", subroom: "Bottom"),
-          Door.new(:right, "00-05-03", "highJump", subroom: "Bottom", height: 2),
+          Door.new(:right, "00-05-03", :highJump, subroom: "Bottom", height: 2),
           Door.new(:right, "00-05-05"),
           Enemy.new("Nova Skeleton", id: "04", type: ["Range", "Enclosed"]),
           Enemy.new("Nova Skeleton", id: "05", type: ["Range", "Vanguard"]),
           ],
-        "00-05-04", "Entrance Stairs", height: 2, room_req: "beatNovas"
+        "00-05-04", "Entrance Stairs", height: 2, room_req: :beatNovas
         ),
       Rm.new("Entrance Stairs Bottom", "Barracks", [
           Door.new(:left, "00-05-06"),
-          Door.new(:up, "00-05-04", "highJump", subroom: "Top"),
-          Item.new("Melio Hasta"),
+          Door.new(:up, "00-05-04", :highJump, subroom: "Top"),
+          Item.new("Melio Hasta", id: "02"),
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Enclosed"]),
           ],
         "00-05-04", "Entrance Stairs"
@@ -1191,7 +1208,7 @@ end
       Rm.new("Entrance Stairs", "Barracks", [
           Door.new(:left),
           Item.new("Melio Hasta"),
-          Door.new(:right, "highJump", height: 3),
+          Door.new(:right, :highJump, height: 3),
           Door.new(:right, height: 2)
           ],
         "00-05-04", height: 3
@@ -1216,16 +1233,16 @@ end
           Enemy.new("Blade Master", id: "03", type: "Vanguard"),
           Enemy.new("Red Smasher", id: "04", type: "Vanguard"),
           ],
-        "00-05-07", width: 3, room_req: "highJump"
+        "00-05-07", width: 3, room_req: :highJump
         ),
       Rm.new("Under Ramparts", "Barracks", [
           Door.new(:left, "00-05-03", subroom: "Bottom"),
-          Item.new("Green Drops"),
-          Item.new("$2000", "beatNovas"),
+          Item.new("Green Drops", id: "02"),
+          Item.new("$2000", :beatNovas, id: "03"),
           Enemy.new("Blade Master", id: "04", type: ["Vanguard", "Semi-Enclosed"]),
           Enemy.new("Hammer Shaker", id: "05", type: ["Guard", "Semi-Enclosed"]),
           ],
-        "00-05-08", width: 3, room_req: "highJump"
+        "00-05-08", width: 3, room_req: :highJump
         ),
       Rm.new("North-Central Big Stairs Top", "Barracks", [
           Door.new(:left, "00-05-07"),
@@ -1237,9 +1254,9 @@ end
         "00-05-09", "North-Central Big Stairs", width: 2
         ),
       Rm.new("North-Central Big Stairs Bottom", "Barracks", [
-          Door.new(:up, "00-05-09", "highJump", subroom: "Top"),
+          Door.new(:up, "00-05-09", :highJump, subroom: "Top"),
           Door.new(:down, "00-05-0A"),
-          Item.new("Green Drops"),
+          Item.new("Green Drops", id: "02"),
           Enemy.new("Nova Skeleton", id: "05", type: ["Range", "Semi-Enclosed"]),
           ],
         "00-05-09", "North-Central Big Stairs", width: 2
@@ -1255,8 +1272,8 @@ end
         ),
 =end
       Rm.new("South-central Big Stairs", "Barracks", [
-          Item.new("MP Max Up", "beatNovas"),
-          Door.new(:up, "00-05-09", "highJump", subroom: "Bottom"),
+          Item.new("MP Max Up", :beatNovas, id: "00"),
+          Door.new(:up, "00-05-09", :highJump, subroom: "Bottom"),
           Door.new(:right, "00-05-0B"),
           Enemy.new("Lizardman Blade", id: "01", type: ["Challenger", "Semi-Enclosed", "WallR"]),
           Enemy.new("Lizardman Blade", id: "02", type: ["Challenger", "Enclosed", "Separated", "Wall"]),
@@ -1271,36 +1288,36 @@ end
           Enemy.new("Blade Master", id: "02", type: "Vanguard"),
           Enemy.new("Blade Master", id: "03", type: "Vanguard"),
           ],
-        "00-05-0B", width: 3, room_req: "highJump"
+        "00-05-0B", width: 3, room_req: :highJump
         ),
       Rm.new("East Courtyard", "Barracks", [
           Door.new(:left, "00-05-0B"),
-          Item.new("Red Drops", "highJump"),
+          Item.new("Red Drops", :highJump, id: "01"),
           Door.new(:right, "00-05-12"),
           Enemy.new("Lizardman Blade", id: "02", type: "Vanguard"),
           ],
         "00-05-0C", width: 2
         ),
       Rm.new("Moon Ring Room", "Barracks", [
-          Item.new("Moon Ring"),
+          Item.new("Moon Ring", id: "00"),
           Door.new(:right, "00-05-11", subroom: "Top")
           ],
         "00-05-0D"
         ),
       Rm.new("Valkyrie Mail Room", "Barracks", [
           Door.new(:left, "00-05-10", subroom: "Bottom"),
-          Item.new("Valkyrie Mail")
+          Item.new("Valkyrie Mail", id: "00")
           ],
         "00-05-0E"
         ),
       Rm.new("Hidden HP Room", "Barracks", [
           Door.new(:left, "00-05-09", subroom: "Top"),
-          Item.new("HP Max Up")
+          Item.new("HP Max Up", id: "00")
           ],
         "00-05-0F"
         ),
       Rm.new("Teleporter Stairs Top", "Barracks", [
-          Door.new(:left, "00-05-12", "highJump", height: 2),
+          Door.new(:left, "00-05-12", :highJump, height: 2),
           Door.new(:left, "00-05-13"),
           Door.new(:down, "00-05-10", subroom: "Bottom"),
           Enemy.new("Bugbear", id: "03", type: ["Seeker", "Vanguard", "Floor", "Semi-Enclosed"]),
@@ -1309,7 +1326,7 @@ end
         "00-05-10", "Teleporter Stairs", height: 2
         ),
       Rm.new("Teleporter Stairs Bottom", "Barracks", [
-          Door.new(:up, "00-05-10", "highJump", subroom: "Top"),
+          Door.new(:up, "00-05-10", :highJump, subroom: "Top"),
           Door.new(:right, "00-05-0E"),
           Enemy.new("Bugbear", id: "02", type: ["Seeker", "Vanguard", "Floor", "Enclosed"]),
           Enemy.new("Imp", id: "06", type: ["Nuisance", "Ambush", "Semi-Enclosed", "Hardmode"]),
@@ -1318,7 +1335,7 @@ end
         ),
 =begin
       Rm.new("Teleporter Stairs", "Barracks", [
-          Door.new(:left, "highJump", height: 3),
+          Door.new(:left, :highJump, height: 3),
           Door.new(:left, height: 2),
           Door.new(:right)
           ],
@@ -1336,7 +1353,7 @@ end
         "00-05-11", "Northeast Big Stairs", width: 2
         ),
       Rm.new("Northeast Big Stairs Bottom", "Barracks", [
-          Door.new(:up, "00-05-11", "highJump", subroom: "Top"),
+          Door.new(:up, "00-05-11", :highJump, subroom: "Top"),
           Door.new(:down, "00-05-12"),
           Enemy.new("Gurkha Master", id: "01", type: ["Range", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Imp", id: "05", type: ["Nuisance", "Offscreen", "Semi-Enclosed"]),
@@ -1354,13 +1371,13 @@ end
 =end
       Rm.new("Southeast Big Stairs", "Barracks", [
           Door.new(:left, "00-05-0C"),
-          Door.new(:up, "00-05-11", "highJump", subroom: "Bottom"),
+          Door.new(:up, "00-05-11", :highJump, subroom: "Bottom"),
           Door.new(:right, "00-05-10", subroom: "Top"),
           Enemy.new("Gurkha Master", id: "02", type: ["Guard", "Vanguard", "Enclosed"]),
           Enemy.new("Blade Master", id: "03", type: ["Challenger", "Vanguard", "Enclosed", "Wall"]),
           Enemy.new("Blade Master", id: "04", type: ["Challenger", "Semi-Enclosed", "WallR"]),
           ],
-        "00-05-12", width: 2, height: 2, room_req: "beatNovas"
+        "00-05-12", width: 2, height: 2, room_req: :beatNovas
         ),
       Rm.new("Teleporter", "Barracks", [
           Door.new(:right, "00-05-10", subroom: "Top")
@@ -1385,26 +1402,26 @@ end
         "00-06-01", width: 2
         ),
       Rm.new("South Depot Balcony", "Mechanical Tower", [
-          Door.new(:left, "00-06-03", "highJump", height: 2),
+          Door.new(:left, "00-06-03", :highJump, height: 2),
           Door.new(:left, "00-06-01"),
           Enemy.new("Lizardman Blade", id: "02", type: ["Vanguard", "Semi-Enclosed"]),
           Enemy.new("Hammer Shaker", id: "03", type: ["Guard", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Bugbear", id: "04", type: ["Seeker", "Floor", "Vanguard", "Semi-Enclosed"]),
           ],
-        "00-06-02", width: 2, height: 2, room_req: "beatArmor"
+        "00-06-02", width: 2, height: 2, room_req: :beatArmor
         ),
       Rm.new("Lizard Maze", "Mechanical Tower", [
-          Door.new(:right, "00-06-1A", "mechTower", height: 2),
+          Door.new(:right, "00-06-1A", :mechTower, height: 2),
           Door.new(:right, "00-06-02", "armsDepot"),
           Enemy.new("Lizardman Blade", id: "06", type: ["Challenger", "Enclosed", "Wall"]),
           Enemy.new("Lizardman Blade", id: "07", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Lizardman Blade", id: "08", type: ["Challenger", "Semi-Enclosed"]),
-          Enemy.new("Imp", id: "09", type: ["Nuisance", "Separated", "Semi-Enclosed"]),
+          Enemy.new("Imp", id: "09", type: ["Nuisance", "Separated", "Semi-Enclosed", "Divekick"]),
           ],
-        "00-06-03", width: 3, height: 2, room_req: "beatLizards"
+        "00-06-03", width: 3, height: 2, room_req: :beatLizards
         ),
       Rm.new("South Epsilon Chamber", "Mechanical Tower", [
-          Door.new(:right, "00-06-19", "mechTower", height: 3),
+          Door.new(:right, "00-06-19", :mechTower, height: 3),
           Door.new(:right, "00-06-05")
           ],
         "00-06-04", height: 3
@@ -1434,7 +1451,7 @@ end
         "00-06-07", width: 2
         ),
       Rm.new("Mid-tower Balcony", "Mechanical Tower", [
-          Door.new(:left, "00-06-09", "highJump", height: 2),
+          Door.new(:left, "00-06-09", :highJump, height: 2),
           Door.new(:left, "00-06-07"),
           Enemy.new("Medusa Head", id: "03", type: ["Persistent", "Vanguard", "Air", "Semi-Enclosed"]),
           Enemy.new("Medusa Head", id: "04", type: ["Persistent", "Vanguard", "Air", "Semi-Enclosed"]),
@@ -1447,16 +1464,16 @@ end
         ),
       Rm.new("Magnet Maze", "Mechanical Tower", [
           Door.new(:left, "00-06-0A", subroom: "Top", height: 2),
-          Item.new("Valkyrie Mask"),
+          Item.new("Valkyrie Mask", id: "00"),
           Door.new(:right, "00-06-08"),
           Enemy.new("Medusa Head", id: "0E", type: ["Persistent", "Air", "Platform", "Spikes"]),
           Enemy.new("Medusa Head", id: "10", type: ["Persistent", "Air", "Platform", "Spikes", "Hardmode"]),
           ],
-        "00-06-09", width: 3, height: 2, room_req: "mechTower"
+        "00-06-09", width: 3, height: 2, room_req: :mechTower
         ),
       Rm.new("S Fork Top", "Mechanical Tower", [
           Door.new(:down, "00-06-0A", subroom: "Bottom"),
-          Door.new(:right, "00-06-0E", "mechTower", subroom: "Bottom", height: 2),
+          Door.new(:right, "00-06-0E", :mechTower, subroom: "Bottom", height: 2),
           Door.new(:right, "00-06-09"),
           Enemy.new("Medusa Head", id: "03", type: ["Persistent", "Vanguard", "Air"]),
           Enemy.new("Medusa Head", id: "04", type: ["Persistent", "Vanguard", "Air"]),
@@ -1466,14 +1483,14 @@ end
         ),
       Rm.new("S Fork Bottom", "Mechanical Tower", [
           Door.new(:left, "00-06-0B"),
-          Door.new(:up, "00-06-0A", "mechTower", subroom: "Top")
+          Door.new(:up, "00-06-0A", :mechTower, subroom: "Top")
           ],
         "00-06-0A", "S Fork"
         ),
 =begin
       Rm.new("S Fork", "Mechanical Tower", [
           Door.new(:left),
-          Door.new(:right, "mechTower", height: 3),
+          Door.new(:right, :mechTower, height: 3),
           Door.new(:right, height: 2)
           ],
         "00-06-0A", height: 3
@@ -1498,7 +1515,7 @@ end
         "00-06-0C", width: 2
         ),
       Rm.new("Death Ring Balcony", "Mechanical Tower", [
-          Door.new(:left, "00-06-0C", "highJump", height: 2),
+          Door.new(:left, "00-06-0C", :highJump, height: 2),
           Door.new(:left, "00-06-0E", subroom: "Top"),
           Enemy.new("Medusa Head", id: "02", type: ["Persistent", "Vanguard", "Air", "Semi-Enclosed"]),
           Enemy.new("Medusa Head", id: "03", type: ["Persistent", "Vanguard", "Air", "Semi-Enclosed"]),
@@ -1517,11 +1534,11 @@ end
         ),
       Rm.new("Death Ring Fork Bottom", "Mechanical Tower", [
           Door.new(:left, "00-06-0A", subroom: "Top"),
-          Item.new("Heart Cuirass"),
+          Item.new("Heart Cuirass", id: "00"),
           Door.new(:up, "00-06-0E", subroom: "Top"),
-          Item.new("HP Max Up")
+          Item.new("HP Max Up", id: "03")
           ],
-        "00-06-0E", "Death Ring Fork", width: 3, room_req: "mechTower"
+        "00-06-0E", "Death Ring Fork", width: 3, room_req: :mechTower
         ),
 =begin
       Rm.new("Death Ring Fork", "Mechanical Tower", [
@@ -1531,11 +1548,11 @@ end
           Item.new("HP Max Up"),
           Door.new(:right, height: 2)
           ],
-        "00-06-0E", width: 3, height: 2, room_req: "mechTower"
+        "00-06-0E", width: 3, height: 2, room_req: :mechTower
         ),
 =end
       Rm.new("North Epsilon Chamber", "Mechanical Tower", [
-          Door.new(:right, "00-06-10", "mechTower", height: 3),
+          Door.new(:right, "00-06-10", :mechTower, height: 3),
           Door.new(:right, "00-06-0E", subroom: "Top"),
           Enemy.new("Medusa Head", id: "07", type: ["Persistent", "Air", "AirOnly", "Platform", "Separated"]),
           Enemy.new("Gorgon Head", id: "08", type: ["Persistent", "Air", "AirOnly", "Platform", "Separated"]),
@@ -1545,7 +1562,7 @@ end
         ),
       Rm.new("Frank Room", "Mechanical Tower", [
           Door.new(:left, "00-06-0F"),
-          Door.new(:right, "00-06-11"),
+          Door.new(:right, "00-06-11", subroom: "Bottom"),
           Enemy.new("Rebuild", id: "01", type: ["Guard", "Vanguard"]),
           ],
         "00-06-10", width: 2
@@ -1559,7 +1576,7 @@ end
         ),
       Rm.new("Death Entrance Bottom", "Mechanical Tower", [
           Door.new(:left, "00-06-10"),
-          Door.new(:up, "00-06-11", "mechTower", subroom: "Top"),
+          Door.new(:up, "00-06-11", :mechTower, subroom: "Top"),
           Door.new(:right, "00-06-12")
           ],
         "00-06-11", "Death Entrance", height: 2
@@ -1578,10 +1595,10 @@ end
           Door.new(:left, "00-06-15"),
           Door.new(:right, "00-06-11", subroom: "Top")
           ],
-        "00-06-14", width: 2, room_req: "beatDeath", is_important: true
+        "00-06-14", width: 2, room_req: :beatDeath, is_important: true
         ),
       Rm.new("Custos Room", "Mechanical Tower", [
-          Item.new("Sinestro Custos"),
+          Item.new("Sinestro Custos", id: "01"),
           Door.new(:right, "00-06-14")
           ],
         "00-06-15"
@@ -1601,19 +1618,19 @@ end
         "00-06-17", width: 2
         ),
       Rm.new("Morbus Balcony", "Mechanical Tower", [
-          Door.new(:left, "00-06-19", "highJump", height: 2),
+          Door.new(:left, "00-06-19", :highJump, height: 2),
           Door.new(:left, "00-06-17"),
           Enemy.new("Automaton ZX27", id: "02", type: ["Guard", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Red Smasher", id: "03", type: ["Vanguard", "Semi-Enclosed"]),
           ],
-        "00-06-18", width: 2, height: 2, room_req: "beatArmor"
+        "00-06-18", width: 2, height: 2, room_req: :beatArmor
         ),
       Rm.new("Morbus Fork", "Mechanical Tower", [
           Door.new(:left, "00-06-04"),
           Door.new(:right, "00-06-16", height: 2),
           Door.new(:right, "00-06-18")
           ],
-        "00-06-19", width: 3, height: 2, room_req: "mechTower"
+        "00-06-19", width: 3, height: 2, room_req: :mechTower
         ),
       Rm.new("North Depot Balcony", "Mechanical Tower", [
           Door.new(:left, "00-06-05", height: 2),
@@ -1621,23 +1638,23 @@ end
           Enemy.new("Gurkha Master", id: "02", type: ["Guard", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Red Smasher", id: "03", type: ["Vanguard", "Semi-Enclosed"]),
           ],
-        "00-06-1A", width: 2, height: 2, room_req: "beatArmor"
+        "00-06-1A", width: 2, height: 2, room_req: :beatArmor
         ),
       Rm.new("Death Ring Room", "Mechanical Tower", [
-          Item.new("Death Ring"),
+          Item.new("Death Ring", id: "00"),
           Door.new(:right, "00-06-0C")
           ],
         "00-06-1B"
         ),
       Rm.new("Morbus Room", "Mechanical Tower", [
-          Item.new("Morbus"),
+          Item.new("Morbus", :fulgurPuzzle, id: "01"),
           Door.new(:right, "00-06-17")
           ],
         "00-06-1C"
         ),
       ],[
       Rm.new("Barracks to Tower Loading", "Mechanical Tower", [
-          Door.new(:left, "00-05-11"),
+          Door.new(:left, "00-05-11", subroom: "Top"),
           Door.new(:right, "00-07-01")
           ],
         "00-07-00", room_type: :loading
@@ -1651,12 +1668,12 @@ end
           Enemy.new("Imp", id: "05", type: ["Nuisance", "Semi-Enclosed"]),
           Enemy.new("Imp", id: "06", type: ["Nuisance", "Vanguard", "Semi-Enclosed"]),
           ],
-        "00-07-01", width: 3, room_req: "beatArmor"
+        "00-07-01", width: 3, room_req: :beatArmor
         ),
       Rm.new("Lizard Hub Top Left", "Mechanical Tower", [
           Door.new(:left, "00-07-04"),
           Door.new(:down, "00-07-02", subroom: "Bottom"),
-          Door.new(:right, "00-07-02", "highJump", subroom: "Top Right", height: 2),
+          Door.new(:right, "00-07-02", :highJump, subroom: "Top Right", height: 2),
           Enemy.new("Imp", id: "06", type: ["Nuisance", "Platform", "Ambush"]),
           ],
         "00-07-02", "Lizard Hub", height: 2
@@ -1664,15 +1681,15 @@ end
       Rm.new("Lizard Hub Top Right", "Mechanical Tower", [
           Door.new(:left, "00-07-02", subroom: "Top Left"),
           Door.new(:down, "00-07-02", subroom: "Mid Right", width: 2),
-          Door.new(:right, "00-07-05", "highJump"),
+          Door.new(:right, "00-07-05", :highJump),
           Enemy.new("Imp", id: "05", type: "Nuisance"),
           ],
         "00-07-02", "Lizard Hub", width: 2
         ),
       Rm.new("Lizard Hub Mid Right", "Mechanical Tower", [
-          Door.new(:up, "00-07-02", "highJump", subroom: "Top Right", width: 2),
-          Door.new(:down, "00-07-02", "beatLizards", subroom: "Bottom", width: 2),
-          Item.new("Vis Fio"),
+          Door.new(:up, "00-07-02", :highJump, subroom: "Top Right", width: 2),
+          Door.new(:down, "00-07-02", :beatLizards, subroom: "Bottom", width: 2),
+          Item.new("Vis Fio", id: "00"),
           Door.new(:right, "00-07-03"),
           Enemy.new("Lizardman Blade", id: "03", type: ["Guard", "Enclosed"]),
           Enemy.new("Imp", id: "04", type: ["Nuisance", "Enclosed"]),
@@ -1681,21 +1698,21 @@ end
         ),
       Rm.new("Lizard Hub Bottom", "Mechanical Tower", [
           Door.new(:left, "00-07-01"),
-          Door.new(:up, "00-07-02", "canFly", subroom: "Top Left"),
-          Door.new(:up, "00-07-02", "highJumpbeatLizards", subroom: "Mid Right", width: 3),
+          Door.new(:up, "00-07-02", :hasFlight, subroom: "Top Left"),
+          Door.new(:up, "00-07-02", :highJump, subroom: "Mid Right", width: 3), #beatLizards
           Enemy.new("Lizardman Blade", id: "01", type: ["Guard", "Vanguard", "Enclosed"]),
           Enemy.new("Lizardman Blade", id: "02", type: ["Guard", "Enclosed"]),
           ],
         "00-07-02", "Lizard Hub", width: 3
         ),
       Rm.new("Lizard Hub Southeast Fork", "Mechanical Tower", [
-          Door.new(:left, "00-07-02", "mechTower", subroom: "Mid Right", height: 3),
+          Door.new(:left, "00-07-02", :mechTower, subroom: "Mid Right", height: 3),
           Door.new(:left, "00-06-16")
           ],
         "00-07-03", height: 3
         ),
       Rm.new("Lizard Hub Northwest Fork", "Mechanical Tower", [
-          Door.new(:right, "00-06-06", "mechTower", height: 3),
+          Door.new(:right, "00-06-06", :mechTower, height: 3),
           Door.new(:right, "00-07-02", subroom: "Top Left")
           ],
         "00-07-04", height: 3
@@ -1708,11 +1725,11 @@ end
       ],[
     #Arms Depot
       Rm.new("HP Max Up Room", "Arms Depot", [
-          Item.new("HP Max Up"),
+          Item.new("HP Max Up", id: "00"),
           Door.new(:right, "00-08-01"),
           Enemy.new("Hammer Shaker", id: "03", type: ["Guard", "Vanguard"]),
           ],
-        "00-08-00", room_req: "beatArmor"
+        "00-08-00", room_req: :beatArmor
         ),
       Rm.new("Corridor to HP Room", "Arms Depot", [
           Door.new(:left, "00-08-00"),
@@ -1720,17 +1737,17 @@ end
           Enemy.new("Gurkha Master", id: "02", type: ["Guard", "Vanguard"]),
           Enemy.new("Hammer Shaker", id: "03", type: ["Guard", "Vanguard"]),
           ],
-        "00-08-01", width: 2, room_req: "beatArmor"
+        "00-08-01", width: 2, room_req: :beatArmor
         ),
       Rm.new("Entrance Stairs", "Arms Depot", [
-          Door.new(:left, "00-08-01", "smallDistance", height: 3),
+          Door.new(:left, "00-08-01", height: 3), #smallDistance
           Door.new(:left, "00-08-07"),
           Door.new(:right, "00-06-00", height: 3),
           Door.new(:right, "00-08-08"),
-          Enemy.new("Bugbear", id: "02", type: ["Seeker", "Floor", "Vanguard"]),
+          Enemy.new("Bugbear", id: "02", type: ["Seeker", "Floor", "Ambush"]),
           Enemy.new("Bugbear", id: "03", type: ["Seeker", "Floor", "Ambush"]),
           ],
-        "00-08-02", height: 3
+        "00-08-02", height: 3, room_req: :armsDepot
         ),
       Rm.new("Teleporter Room", "Arms Depot", [
           Door.new(:right, "00-08-04")
@@ -1748,33 +1765,33 @@ end
         ),
       Rm.new("Northwest Corridor", "Arms Depot", [
           Door.new(:left, "00-08-04"),
-          Item.new("Melio Falcis"),
+          Item.new("Melio Falcis", id: "00"),
           Door.new(:right, "00-08-06"),
           Enemy.new("Great Knight", id: "01", type: ["Guard", "Vanguard"]),
           Enemy.new("King Skeleton", id: "02", type: ["Guard", "Vanguard"]),
           ],
-        "00-08-05", width: 3, room_req: "beatArmor"
+        "00-08-05", width: 3, room_req: :beatArmor
         ),
       Rm.new("North-Central Corridor", "Arms Depot", [
           Door.new(:left, "00-08-05"),
           Door.new(:right, "00-08-07"),
           Enemy.new("Rebuild", id: "00", type: "Guard"),
           ],
-        "00-08-06", width: 3, room_req: "highJump"
+        "00-08-06", width: 3, room_req: :highJump
         ),
       Rm.new("Northeast Corridor", "Arms Depot", [
           Door.new(:left, "00-08-06"),
-          Item.new("Melio Culter"),
+          Item.new("Melio Culter", id: "00"),
           Door.new(:right, "00-08-02"),
           Enemy.new("Red Smasher", id: "01", type: "Vanguard"),
           Enemy.new("Hammer Shaker", id: "02", type: "Guard"),
           Enemy.new("Gurkha Master", id: "03", type: ["Guard", "Vanguard"]),
           ],
-        "00-08-07", width: 3, room_req: "beatArmor"
+        "00-08-07", width: 3, room_req: :beatArmor
         ),
       Rm.new("Northeast Sword Corridor", "Arms Depot", [
           Door.new(:left, "00-08-02"),
-          Item.new("Melio Scutum"),
+          Item.new("Melio Scutum", id: "00"),
           Door.new(:right, "00-08-09"),
           Enemy.new("Spectral Sword", id: "01", type: ["Threat", "Air"]),
           ],
@@ -1792,7 +1809,7 @@ end
           Enemy.new("Great Knight", id: "03", type: ["Guard", "Vanguard"]),
           Enemy.new("King Skeleton", id: "04", type: ["Guard", "Vanguard"]),
           ],
-        "00-08-0A", width: 3, room_req: "beatArmor"
+        "00-08-0A", width: 3, room_req: :beatArmor
         ),
       Rm.new("South Sword Corridor", "Arms Depot", [
           Door.new(:left, "00-08-0A"),
@@ -1800,12 +1817,12 @@ end
           Enemy.new("Spectral Sword", id: "03", type: ["Threat", "Air", "Vanguard"]),
           Enemy.new("Spectral Sword", id: "04", type: ["Threat", "Air", "Vanguard"]),
           ],
-        "00-08-0B", width: 3, room_req: "beatArmor"
+        "00-08-0B", width: 3, room_req: :beatArmor
         ),
       Rm.new("Eligor Stairs", "Arms Depot", [
-          Door.new(:left, "00-08-0B", "smallDistance", height: 3),
+          Door.new(:left, "00-08-0B", height: 3), #smallDistance
           Door.new(:left, "00-08-0D"),
-          Item.new("Mint Sundae"),
+          Item.new("Mint Sundae", id: "02"),
           Door.new(:right, "00-08-0E"),
           Enemy.new("Mad Snatcher", id: "03", type: "Challenger"),
           Enemy.new("Mad Snatcher", id: "04", type: ["Ambush", "Platform"]),
@@ -1821,10 +1838,11 @@ end
           Door.new(:left, "00-08-0C"),
           Door.new(:right, "00-08-0F", height: 2)
           ],
-        "00-08-0E", width: 3, height: 2, room_req: "beatEligor", is_important: true
+        "00-08-0E", width: 3, height: 2, room_req: :beatEligor, is_important: true
         ),
       Rm.new("Custos Room", "Arms Depot", [
-          Door.new(:left, "00-08-0E")
+          Door.new(:left, "00-08-0E"),
+          Item.new("Arma Custos", id: "00"),
           ],
         "00-08-0F"
         ),
@@ -1839,7 +1857,7 @@ end
           Door.new(:left, "00-09-00"),
           Door.new(:down, "00-09-01", subroom: "Bottom"),
           Door.new(:right, "00-0A-13"),
-          Item.new("Eisbein", lock: "highJump", escape: "Bottom"),
+          Item.new("Eisbein", lock: :highJump, escape: "Bottom", id: "02"),
           Enemy.new("Medusa Head", id: "04", type: ["Persistent", "Air", "Platform", "MustMove"]),
           Enemy.new("Gorgon Head", id: "05", type: ["Persistent", "Air"]),
           Enemy.new("Winged Guard", id: "06", type: ["Persistent", "Air", "Offscreen"]),
@@ -1847,10 +1865,10 @@ end
         "00-09-01", "Custos Stairs", height: 5
         ),
       Rm.new("Custos Stairs Bottom", "Forsaken Cloister", [
-          Door.new(:up, "00-09-01", "highJump", subroom: "Top"),
+          Door.new(:up, "00-09-01", :highJump, subroom: "Top"),
           Door.new(:down, "00-09-05")
           ],
-        "00-09-01", "Custos Stairs"
+        "00-09-01", "Custos Stairs", room_req: :finalApproach
         ),
 =begin
       Rm.new("Custos Stairs", "Forsaken Cloister", [
@@ -1873,7 +1891,7 @@ end
           Door.new(:right, "00-09-04"),
           Enemy.new("Cave Troll", id: "02", type: ["Threat", "Vanguard"]),
           ],
-        "00-09-03", width: 2, room_req: "beatLizards"
+        "00-09-03", width: 2, room_req: :beatLizards
         ),
       Rm.new("West Corridor", "Forsaken Cloister", [
           Door.new(:left, "00-09-03"),
@@ -1884,7 +1902,7 @@ end
           Enemy.new("Nova Skeleton", id: "03", type: "Range"),
           Enemy.new("Nova Skeleton", id: "04", type: ["Range", "Vanguard"]),
           ],
-        "00-09-04", width: 4, room_req: "beatLizards"
+        "00-09-04", width: 4, room_req: :beatLizards
         ),
       Rm.new("Cerberus Room", "Forsaken Cloister", [
           Door.new(:left, "00-09-04"),
@@ -1900,7 +1918,7 @@ end
           Enemy.new("Blade Master", id: "02", type: "Challenger"),
           Enemy.new("Blade Master", id: "03", type: "Vanguard"),
           ],
-        "00-09-06", width: 4, room_req: "beatLizards"
+        "00-09-06", width: 4, room_req: :beatLizards
         ),
       Rm.new("East Entrance", "Forsaken Cloister", [
           Door.new(:left, "00-09-06"),
@@ -1908,7 +1926,7 @@ end
           Enemy.new("Blade Master", id: "02", type: "Challenger"),
           Enemy.new("Nova Skeleton", id: "03", type: ["Range", "Vanguard"]),
           ],
-        "00-09-07", width: 2, room_req: "beatNovas"
+        "00-09-07", width: 2, room_req: :beatNovas
         ),
       Rm.new("Tower to Cloister Loading", "Forsaken Cloister", [
           Door.new(:left, "00-09-07"),
@@ -1931,10 +1949,10 @@ end
         "00-0A-01", width: 4
         ),
       Rm.new("Volaticus Attic", "Final Approach", [
-          Item.new("Sun Ring"),
-          Item.new("Blue Drops"),
-          Item.new("MP Max Up"),
-          Item.new("HEART Max Up"),
+          Item.new("Sun Ring", id: "00"),
+          Item.new("Blue Drops", id: "01"),
+          Item.new("MP Max Up", id: "02"),
+          Item.new("HEART Max Up", id: "03"),
           Door.new(:down, "00-0A-03", width: 2),
           Enemy.new("Bugbear", id: "04", type: ["Seeker", "Floor", "Vanguard"]),
           Enemy.new("Bugbear", id: "05", type: ["Seeker", "Floor", "Vanguard"]),
@@ -1946,11 +1964,11 @@ end
         "00-0A-02", width: 3
         ),
       Rm.new("Volaticus Courtyard", "Final Approach", [
-          Door.new(:left, "00-0A-01", "canFly", height: 2),
-          Item.new("Volaticus"),
-          Item.new("MP Max Up"),
-          Door.new(:right, "00-0A-04", "canFly", height: 2),
-          Door.new(:up, "00-0A-02", "canFly", width: 2),
+          Door.new(:left, "00-0A-01", :hasFlight, height: 2),
+          Item.new("Volaticus", id: "00"),
+          Item.new("MP Max Up", id: "02"),
+          Door.new(:right, "00-0A-04", :hasFlight, height: 2),
+          Door.new(:up, "00-0A-02", :volaticusAttic, width: 2),
           Enemy.new("Winged Skeleton", id: "03", type: ["Persistent", "Air", "Offscreen"]),
           ],
         "00-0A-03", width: 3, height: 2
@@ -1961,7 +1979,7 @@ end
           Enemy.new("Final Knight", id: "00", type: "Guard"),
           Enemy.new("Final Knight", id: "01", type: "Guard"),
           ],
-        "00-0A-04", width: 4, room_req: "beatArmor"
+        "00-0A-04", width: 4, room_req: :beatArmor
         ),
       Rm.new("Succubus Chamber", "Final Approach", [
           Door.new(:left, "00-0A-04"),
@@ -1972,7 +1990,7 @@ end
         ),
       Rm.new("Merman Stairs", "Final Approach", [
           Door.new(:left, "00-0A-05"),
-          Door.new(:right, "00-0A-09", "highJump", height: 2),
+          Door.new(:right, "00-0A-09", :highJump, height: 2),
           Door.new(:right, "00-0A-0A"),
           Enemy.new("Cave Troll", id: "00", type: ["Threat", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Cave Troll", id: "01", type: ["Threat", "Vanguard", "Semi-Enclosed"]),
@@ -1980,7 +1998,7 @@ end
           Enemy.new("Cave Troll", id: "03", type: ["Threat", "Semi-Enclosed"]),
           Enemy.new("Cave Troll", id: "04", type: ["Threat", "Vanguard", "Semi-Enclosed", "Platform"]),
           ],
-        "00-0A-06", width: 2, height: 2, room_req: "beatLizards"
+        "00-0A-06", width: 2, height: 2, room_req: :beatLizards
         ),
       Rm.new("Dracula Loading", "Final Approach", [
           Door.new(:left, "00-0A-0C"),
@@ -1989,7 +2007,7 @@ end
         "00-0A-07", room_type: :loading
         ),
       Rm.new("Dracula Hub Heart Room", "Final Approach", [
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", id: "00"),
           Door.new(:right, "00-0A-0C")
           ],
         "00-0A-08"
@@ -1999,33 +2017,34 @@ end
           Door.new(:right, "00-0A-0D"),
           Enemy.new("Devil", id: "00", type: ["Guard", "Vanguard"]),
           ],
-        "00-0A-09", room_req: "beatDevils"
+        "00-0A-09"
         ),
       Rm.new("Skeleton Chamber", "Final Approach", [
           Door.new(:left, "00-0A-06"),
           Door.new(:right, "00-0A-0E"),
           Enemy.new("Blade Master", id: "00", type: "Vanguard"),
           ],
-        "00-0A-0A", room_req: "highJump"
+        "00-0A-0A", room_req: :highJump
         ),
       Rm.new("Dracula Hub Attic", "Final Approach", [
-          Item.new("Gold Ore"),
+          Item.new("Gold Ore", id: "00"),
           Item.new("Diamond", id: "01"),
           Item.new("Diamond", id: "02"),
-          Item.new("Onyx"),
+          Item.new("Onyx", id: "03"),
+          Item.new("World Ring", id: "04"),
           Door.new(:down, "00-0A-0C"),
           Enemy.new("Blade Master", id: "05", type: "Vanguard"),
           Enemy.new("Blade Master", id: "06", type: "Vanguard"),
           Enemy.new("Blade Master", id: "07", type: "Vanguard"),
           Enemy.new("Blade Master", id: "08", type: "Vanguard"),
           ],
-        "00-0A-0B", width: 3, room_req: "beatNovas"
+        "00-0A-0B", width: 3, room_req: :beatNovas
         ),
       Rm.new("Dracula Hub", "Final Approach", [
           Door.new(:left, "00-0A-07", height: 2),
           Door.new(:left, "00-0A-08"),
-          Door.new(:up, "00-0A-0B", "canFly", width: 2),
-          Item.new("Judgement Ring", "midDistance"),
+          Door.new(:up, "00-0A-0B", :volaticusAttic, width: 2),
+          Item.new("Judgement Ring", id: "02"), #midDistance
           Door.new(:right, "00-0A-0F", height: 2),
           Door.new(:right, "00-0A-10"),
           Enemy.new("Blade Master", id: "03", type: ["Vanguard", "Enclosed"]),
@@ -2038,7 +2057,7 @@ end
           Enemy.new("Blade Master", id: "0A", type: ["Vanguard", "Semi-Enclosed", "Wall"]),
           Enemy.new("Blade Master", id: "0B", type: ["Vanguard", "Semi-Enclosed", "WallR"]),
           ],
-        "00-0A-0C", width: 3, height: 2, room_req: "beatDevils"
+        "00-0A-0C", width: 3, height: 2
         ),
       Rm.new("Final Knight Corridor", "Final Approach", [
           Door.new(:left, "00-0A-09"),
@@ -2046,7 +2065,7 @@ end
           Enemy.new("Final Knight", id: "00", type: ["Guard", "Vanguard"]),
           Enemy.new("Final Knight", id: "01", type: ["Guard", "Vanguard"]),
           ],
-        "00-0A-0D", width: 3, room_req: "beatArmor"
+        "00-0A-0D", width: 3, room_req: :beatArmor
         ),
       Rm.new("Sword Corridor", "Final Approach", [
           Door.new(:left, "00-0A-0A"),
@@ -2054,7 +2073,7 @@ end
           Enemy.new("Spectral Sword", id: "00", type: ["Threat", "Vanguard", "Air"]),
           Enemy.new("Spectral Sword", id: "01", type: ["Threat", "Vanguard", "Air"]),
           ],
-        "00-0A-0E", width: 3, room_req: "beatArmor"
+        "00-0A-0E", width: 3, room_req: :beatArmor
         ),
       Rm.new("Hub Teleporter", "Final Approach", [
           Door.new(:left, "00-0A-0C")
@@ -2062,7 +2081,7 @@ end
         "00-0A-0F", room_type: :teleporter
         ),
       Rm.new("Northeast Big Stairs", "Final Approach", [
-          Door.new(:left, "00-0A-0C", "highJump", height: 2),
+          Door.new(:left, "00-0A-0C", :highJump, height: 2),
           Door.new(:left, "00-0A-0D"),
           Enemy.new("Lilith", id: "00", type: ["Range", "Vanguard", "Enclosed"]),
           Enemy.new("Lilith", id: "01", type: ["Range", "Enclosed"]),
@@ -2071,10 +2090,10 @@ end
           Enemy.new("Devil", id: "04", type: ["Guard", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Devil", id: "05", type: ["Guard", "Vanguard", "Semi-Enclosed", "Wall"]),
           ],
-        "00-0A-10", width: 2, height: 2, room_req: "beatDevils"
+        "00-0A-10", width: 2, height: 2
         ),
       Rm.new("Southeast Big Stairs", "Final Approach", [
-          Door.new(:left, "00-0A-0E", "highJump", height: 2),
+          Door.new(:left, "00-0A-0E", :highJump, height: 2),
           Door.new(:left, "00-0A-12"),
           Enemy.new("Lizardman Blade", id: "01", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Lizardman Blade", id: "02", type: ["Challenger", "Enclosed"]),
@@ -2084,7 +2103,7 @@ end
           Enemy.new("Imp", id: "06", type: ["Nuisance", "Semi-Enclosed", "Vanguard", "Platform"]),
           Enemy.new("Imp", id: "07", type: ["Nuisance", "Semi-Enclosed", "Vanguard"]),
           ],
-        "00-0A-11", width: 2, height: 2, room_req: "beatLizards"
+        "00-0A-11", width: 2, height: 2, room_req: :beatLizards
         ),
       Rm.new("Entrance", "Final Approach", [
           Door.new(:left, "00-0A-13"),
@@ -2098,10 +2117,10 @@ end
           Enemy.new("Devil", id: "07", type: ["Guard", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Lizardman Blade", id: "08", type: ["Guard", "Semi-Enclosed"]),
           ],
-        "00-0A-12", width: 3, height: 2, room_req: "beatDevils"
+        "00-0A-12", width: 3, height: 2
         ),
       Rm.new("Entrance Loading", "Final Approach", [
-          Door.new(:left, "00-09-01"),
+          Door.new(:left, "00-09-01", subroom: "Top"),
           Door.new(:right, "00-0A-12")
           ],
         "00-0A-13", room_type: :loading
@@ -2110,7 +2129,7 @@ end
       Rm.new("Dracula Boss Room", "Final Approach", [
           Door.new(:right, "00-0B-01")
           ],
-        "00-0B-00", width: 2, room_req: "beatDracula", is_important: true
+        "00-0B-00", width: 2, room_req: :beatDracula, is_important: true
         ),
       Rm.new("Dracula Save", "Final Approach", [
           Door.new(:left, "00-0B-00"),
@@ -2119,12 +2138,12 @@ end
         "00-0B-01", room_type: :save
         ),
       Rm.new("Broken Stairs", "Final Approach", [
-          Door.new(:left, "00-0B-01", "canFly", height: 3),
-          Item.new("Super Potion", "Paries"),
-          Item.new("MP Max Up", "Paries"),
+          Door.new(:left, "00-0B-01", :hasFlight, height: 3),
+          Item.new("Super Potion", :hasParies, id: "07"),
+          Item.new("MP Max Up", :hasParies, id: "08"),
           Door.new(:right, "00-0A-07", height: 2)
           ],
-        "00-0B-02", width: 2, height: 3, room_req: "highJump"
+        "00-0B-02", width: 2, height: 3, room_req: :highJump
         ),
        ]]
   end
@@ -2137,8 +2156,8 @@ end
         "03-00-00", room_type: :entrance, is_important: true
         ),
       Rm.new("Redire Room Top", "Training Hall", [
-          Door.new(:left, false, "03-00-0A", height: 8),
-          Item.new("Redire"),
+          Door.new(:left, "03-00-0A", false, height: 8),
+          Item.new("Redire", id: "01"),
           Door.new(:down, "03-00-01", subroom: "Bottom"),
           ],
         "03-00-01", "Redire Room", height: 8
@@ -2147,7 +2166,7 @@ end
           Door.new(:left, "03-00-05", false, height: 4),
           Door.new(:left, "03-00-02"),
           Door.new(:right, "03-00-00"),
-          Door.new(:up, false, "03-00-01", subroom: "Top"),
+          Door.new(:up, "03-00-01", false, subroom: "Top"),
           ],
         "03-00-01", "Redire Room", height: 4
         ),
@@ -2158,7 +2177,7 @@ end
         "03-00-02", width: 4
         ),
       Rm.new("Southwest Flame Room", "Training Hall", [
-          Door.new(:right, "03-00-04", "trainingHall", height: 3),
+          Door.new(:right, "03-00-04", :trainingHall, height: 3),
           Door.new(:right, "03-00-02"),
           ],
         "03-00-03", width: 2, height: 3
@@ -2175,26 +2194,26 @@ end
         "03-00-04", width: 3, height: 2
         ),
       Rm.new("Rings Room", "Training Hall", [
-          Door.new(:left, "03-00-06", "trainingHall", height: 3),
+          Door.new(:left, "03-00-06", :trainingHall, height: 3),
           Door.new(:left, "03-00-04"),
           Door.new(:right, "03-00-01", subroom: "Bottom"),
           ],
         "03-00-05", height: 3
         ),
       Rm.new("Central Flame Room", "Training Hall", [
-          Door.new(:left, "03-00-07", "trainingHall", height: 2),
+          Door.new(:left, "03-00-07", :trainingHall, height: 2),
           Door.new(:right, "03-00-05"),
           ],
         "03-00-06", width: 3, height: 2
         ),
       Rm.new("Gear Room", "Training Hall", [
-          Door.new(:right, "03-00-08", "trainingHall", height: 3),
+          Door.new(:right, "03-00-08", :trainingHall, height: 3),
           Door.new(:right, "03-00-06"),
           ],
         "03-00-07", width: 2, height: 3
         ),
       Rm.new("Obstacle Course", "Training Hall", [
-          Door.new(:left, "03-00-09", "trainingHall", height: 2),
+          Door.new(:left, "03-00-09", :trainingHall, height: 2),
           Door.new(:left, "03-00-07"),
           Enemy.new("Automaton ZX26", id: "0E", type: "Guard"),
           Enemy.new("Automaton ZX26", id: "0F", type: "Guard"),
@@ -2202,14 +2221,14 @@ end
         "03-00-08", width: 3, height: 2
         ),
       Rm.new("Flame Elevator", "Training Hall", [
-          Door.new(:right, "03-00-0A", "trainingHall", height: 3),
+          Door.new(:right, "03-00-0A", :trainingHall, height: 3),
           Door.new(:right, "03-00-08"),
           ],
         "03-00-09", height: 3
         ),
       Rm.new("Final Flames", "Training Hall", [
           Door.new(:left, "03-00-09"),
-          Door.new(:right, "03-00-01", "trainingHall", subroom: "Top"),
+          Door.new(:right, "03-00-01", :trainingHall, subroom: "Top"),
           ],
         "03-00-0A", width: 4
         ),
@@ -2226,7 +2245,7 @@ end
       Rm.new("West Corridor", "Ruvas Forest", [
           Door.new(:left, "04-00-00"),
           Door.new(:right, "04-00-04"),
-          Item.new("Macir"),
+          Item.new("Macir", id: "00"),
           Enemy.new("Nominon", id: "01", type: ["Nuisance", "Vanguard"]),
           Enemy.new("Bone Scimitar", id: "02", type: "Vanguard"),
           Enemy.new("Bone Scimitar", id: "03", type: "Challenger"),
@@ -2345,6 +2364,7 @@ end
         ),
       Rm.new("Sandals Room", "Monastery", [
           Door.new(:left, "12-00-01"),
+          Item.new("Sandals", id: "00"),
           Enemy.new("Skeleton", id: "01", type: ["Range", "Vanguard"]),
           Enemy.new("Skeleton", id: "02", type: "Range"),
           Enemy.new("Banshee", id: "03", type: "Seeker"),
@@ -2366,13 +2386,13 @@ end
         ),
       Rm.new("Magnes Climb Top", "Monastery", [
           Door.new(:left, "12-00-07"),
-          Item.new("Cotton Hat"),
+          Item.new("Cotton Hat", id: "00"),
           Door.new(:down, "12-00-05", subroom: "Mid"),
           ],
         "12-00-05", "Magnes Climb"
         ),
       Rm.new("Magnes Climb Mid", "Monastery", [
-          Door.new(:up, "12-00-05", "magnesFlight", subroom: "Top"),
+          Door.new(:up, "12-00-05", :monasteryUpper, subroom: "Top"),
           Door.new(:right, "12-00-09"),
           Door.new(:down, "12-00-05", subroom: "Bottom"),
           ],
@@ -2380,9 +2400,9 @@ end
         ),
       Rm.new("Magnes Climb Bottom", "Monastery", [
           Door.new(:left, "12-00-06"),
-          Door.new(:up, "12-00-05", "magnesFlght", subroom: "Mid"),
+          Door.new(:up, "12-00-05", :monasteryUpper, subroom: "Mid"),
           Door.new(:right, "12-00-04"),
-          Item.new("Magnes"),
+          Item.new("Magnes", id: "05"),
           ],
         "12-00-05", "Magnes Climb", height: 2
         ),
@@ -2394,8 +2414,8 @@ end
       Rm.new("Cat Room", "Monastery", [
           Door.new(:left, "12-00-08"),
           Door.new(:right, "12-00-05", subroom: "Top", height: 2),
-          Item.new("Fool Ring", "highJump"),
-          Item.new("HP Max Up"),
+          Item.new("Fool Ring", :monasteryFoolRing, id: "00"),
+          Item.new("HP Max Up", id: "01"),
           Enemy.new("Ghost", id: "02", type: ["Persistent", "Air", "Vanguard", "Enclosed"]),
           Enemy.new("Banshee", id: "03", type: ["Seeker", "Semi-Enclosed"]),
           ],
@@ -2403,7 +2423,7 @@ end
         ),
       Rm.new("Cube Room", "Monastery", [
           Door.new(:right, "12-00-07"),
-          Item.new("Cubus", "hasFire"),
+          Item.new("Cubus", :cubusPuzzle, id: "00"),
           Enemy.new("Bone Scimitar", id: "01", type: "Vanguard"),
           ],
         "12-00-08", width: 2
@@ -2411,7 +2431,7 @@ end
       Rm.new("Culter Corridor", "Monastery", [
           Door.new(:left, "12-00-05", subroom: "Mid"),
           Door.new(:right, "12-00-0A"),
-          Item.new("Culter"),
+          Item.new("Culter", id: "00"),
           Enemy.new("Zombie", id: "02", type: "Persistent"),
           Enemy.new("Bone Archer", id: "07", type: ["Range", "Hardmode"]),
           Enemy.new("Bone Archer", id: "08", type: ["Range", "Hardmode"]),
@@ -2422,7 +2442,7 @@ end
           Door.new(:left, "12-00-0B", height: 2),
           Door.new(:left, "12-00-09"),
           Door.new(:right, "12-00-0C"),
-          Item.new("Book of Spirits"),
+          Item.new("Book of Spirits", id: "00"),
           Enemy.new("Ghost", id: "03", type: ["Persistent", "Air"]),
           Enemy.new("Banshee", id: "04", type: "Seeker"),
           Enemy.new("Banshee", id: "05", type: ["Seeker", "Semi-Enclosed"]),
@@ -2431,7 +2451,7 @@ end
         ),
       Rm.new("Heart Room", "Monastery", [
           Door.new(:right, "12-00-0A"),
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", id: "00"),
           Enemy.new("Zombie", id: "02", type: ["Persistent", "Vanguard"]),
           Enemy.new("Ghost", id: "03", type: ["Persistent", "Air", "Vanguard"]),
           ],
@@ -2450,8 +2470,8 @@ end
           Door.new(:left, "12-00-0F", height: 4),
           Door.new(:left, "12-00-0C"),
           Door.new(:right, "12-00-0E", height: 4),
-          Item.new("$500"),
-          Item.new("Red Drops"),
+          Item.new("$500", id: "04"),
+          Item.new("Red Drops", id: "02"),
           Enemy.new("Bat", id: "05", type: ["Nuisance", "Enclosed", "Separated"]),
           Enemy.new("Bat", id: "06", type: ["Nuisance", "Enclosed", "Separated"]),
           Enemy.new("Bat", id: "07", type: ["Nuisance", "Enclosed", "Separated"]),
@@ -2493,8 +2513,9 @@ end
         ),
       Rm.new("Boss Lobby Bottom", "Monastery", [
           Door.new(:left, "12-00-11"),
-          Door.new(:up, "12-00-10", "magnesFlight", subroom: "Top"),
+          Door.new(:up, "12-00-10", :monasteryUpper, subroom: "Top"),
           Door.new(:right, "12-00-0F"),
+          Item.new("MP Max Up", :monasteryUpper, id: "00"),
           ],
         "12-00-10", "Boss Lobby"
         ),
@@ -2512,7 +2533,7 @@ end
           Door.new(:left, "12-00-10", subroom: "Top"),
           Door.new(:right, "12-00-14"),
           ],
-        "12-00-13", room_req: "beatArthroverta", is_important: true
+        "12-00-13", room_req: :beatArthroverta, is_important: true
         ),
       Rm.new("Albus Room", "Monastery", [
           Door.new(:left, "12-00-13"),
@@ -2574,7 +2595,7 @@ end
         ),
       Rm.new("HP Room", "Skeleton Cave", [
           Door.new(:right, "11-00-0A"),
-          Item.new("HP Max Up"),
+          Item.new("HP Max Up", :highJump, id: "00"),
           Enemy.new("White Dragon", id: "03", type: ["Range", "Semi-Enclosed", "Vanguard", "Wall", "MustMove"]),
           ],
         "11-00-03"
@@ -2592,8 +2613,8 @@ end
       Rm.new("Bone Pile", "Skeleton Cave", [
           Door.new(:left, "11-00-0B"),
           Door.new(:up, "11-00-04", width: 2),
-          Item.new("Black Drops"),
-          Item.new("MP Max Up"),
+          Item.new("Black Drops", id: "01"),
+          Item.new("MP Max Up", id: "02"),
           Enemy.new("Bone Pillar", id: "04", type: ["Range", "Vanguard", "Enclosed"]),
           Enemy.new("Bone Pillar", id: "05", type: ["Range", "Enclosed"]),
           Enemy.new("Bone Pillar", id: "06", type: ["Range", "Enclosed"]),
@@ -2617,7 +2638,7 @@ end
         ),
       Rm.new("George's Room", "Skeleton Cave", [
           Door.new(:right, "11-00-07"),
-          Item.new("Ordinary Rock"),
+          Item.new("Ordinary Rock", id: "00"),
           Enemy.new("Skeleton Beast", id: "04", type: "Guard"),
           ],
         "11-00-08", width: 2, is_important: true
@@ -2632,9 +2653,9 @@ end
           Enemy.new("Skeleton Frisky", id: "05", type: ["Nuisance", "Floor", "Vanguard"]),
           Enemy.new("Skeleton Frisky", id: "06", type: ["Nuisance", "Floor", "Vanguard"]),
           Enemy.new("Skeleton Frisky", id: "07", type: ["Nuisance", "Floor", "Vanguard"]),
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", :highJump, id: "00"),
           ],
-        "11-00-09", width: 3
+        "11-00-09", width: 3, room_req: :skeleCave
         ),
       Rm.new("Frisky Room", "Skeleton Cave", [
           Door.new(:left, "11-00-03"),
@@ -2658,7 +2679,6 @@ end
           Enemy.new("Skeleton Frisky", id: "10", type: ["Nuisance", "Floor", "Vanguard"]),
           Enemy.new("Skeleton Frisky", id: "11", type: ["Nuisance", "Floor", "Vanguard"]),
           Enemy.new("Skeleton Frisky", id: "12", type: ["Nuisance", "Floor", "Vanguard"]),
-          Item.new("HEART Max Up"),
           ],
         "11-00-0A", width: 3
         ),
@@ -2696,10 +2716,10 @@ end
       Rm.new("West Hill", "Misty Forest Road", [
           Door.new(:left, "0F-00-01"),
           Door.new(:right, "0F-00-03", height: 2),
-          Door.new(:right, "0F-00-04", "Paries"),
-          Item.new("Rue", "oblivionJump"),
+          Door.new(:right, "0F-00-04", :mistyParies),
+          Item.new("Rue", :mistyJumpWest, id: "01"),
           Enemy.new("Specter", id: "04", type: ["Nuisance", "Vanguard"]),
-          Enemy.new("Specter", id: "05", type: ["Nuisance", "Vanguard"]),
+          Enemy.new("Specter", id: "05", type: ["Nuisance", "Vanguard", "Divekick"]),
           ],
         "0F-00-02", width: 2, height: 2
         ),
@@ -2711,10 +2731,10 @@ end
         "0F-00-03", width: 4
         ),
       Rm.new("Lizard Cave", "Misty Forest Road", [
-          Door.new(:left, "0F-00-02", "Paries"),
-          Item.new("Melio Arcus"),
-          Item.new("White Drops"),
-          Item.new("Hierophant Ring"),
+          Door.new(:left, "0F-00-02", :hasParies),
+          Item.new("Melio Arcus", id: "00"),
+          Item.new("White Drops", id: "03"),
+          Item.new("Hierophant Ring", id: "01"),
           Enemy.new("Lizardman Blade", id: "04", type: "Vanguard"),
           Enemy.new("Lizardman Blade", id: "05", type: "Challenger"),
           Enemy.new("Lizardman Blade", id: "06", type: "Challenger"),
@@ -2727,11 +2747,11 @@ end
       Rm.new("East Hill", "Misty Forest Road", [
           Door.new(:left, "0F-00-03", height: 2),
           Door.new(:right, "0F-00-06"),
-          Item.new("Sage", "magnesFlight"),
-          Item.new("Vol Macir"),
-          Enemy.new("Bitterfly", id: "04", type: ["Seeker", "Platform", "Passthrough"]),
+          Item.new("Sage", :mistyJumpEast, id: "02"),
+          Item.new("Vol Macir", id: "00"),
+          Enemy.new("Bitterfly", id: "04", type: ["Seeker", "Platform", "Passthrough", "Divekick"]),
           Enemy.new("Specter", id: "05", type: ["Nuisance", "Vanguard"]),
-          Enemy.new("Specter", id: "06", type: ["Nuisance", "Vanguard"]),
+          Enemy.new("Specter", id: "06", type: ["Nuisance", "Vanguard", "Enclosed"]),
           Enemy.new("Werebat", id: "07", type: "Range"),
           ],
         "0F-00-05", width: 2, height: 2
@@ -2764,7 +2784,7 @@ end
       Rm.new("Entrance", "Misty Forest Road", [
           Door.new(:left, "0F-00-07"),
           ],
-        "0F-00-07", room_type: :entrance, is_important: true
+        "0F-00-08", room_type: :entrance, is_important: true
         ),
     ] ]
   end
@@ -2786,7 +2806,7 @@ end
           Door.new(:left, "08-00-01"),
           Door.new(:right, "08-00-03"),
           ],
-        "08-00-02", width: 2, is_important: true
+        "08-00-02", width: 2, room_req: :beatGiantSkeleton, is_important: true
         ),
       Rm.new("West Searchlights", "Minera Prison Island", [
           Door.new(:left, "08-00-02"),
@@ -2815,7 +2835,7 @@ end
           Door.new(:right, "08-00-06", height: 3),
           Door.new(:right, "08-00-08", height: 2),
           Door.new(:right, "08-00-07"),
-          Item.new("$500"),
+          Item.new("$500", id: "01"),
           Enemy.new("Spear Guard", id: "02", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Bone Archer", id: "03", type: ["Range", "Platform"]),
           ],
@@ -2838,8 +2858,8 @@ end
         ),
       Rm.new("Southwest Cells", "Minera Prison Island", [
           Door.new(:left, "08-00-05"),
-          Item.new("Cabriolet"),
-          Item.new("MP Max Up"),
+          Item.new("Cabriolet", id: "02"),
+          Item.new("MP Max Up", id: "00"),
           Enemy.new("Spear Guard", id: "03", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Spear Guard", id: "04", type: ["Challenger", "Enclosed"]),
           Enemy.new("Spear Guard", id: "05", type: ["Challenger", "Enclosed"]),
@@ -2859,7 +2879,7 @@ end
         ),
       Rm.new("Priestess Room", "Minera Prison Island", [
           Door.new(:right, "08-00-0A"),
-          Item.new("Priestess Ring"),
+          Item.new("Priestess Ring", id: "00"),
           ],
         "08-00-09"
         ),
@@ -2881,20 +2901,20 @@ end
         ),
       Rm.new("Tower Summit", "Minera Prison Island", [
           Door.new(:down, "08-01-02"),
-          Item.new("Tower Ring", "highJump"),
+          Item.new("Tower Ring", :highJump, id: "00"),
           ],
         "08-01-01"
         ),
       Rm.new("Tower", "Minera Prison Island", [
-          Door.new(:up, "08-01-01", "highJump"),
+          Door.new(:up, "08-01-01", :highJump),
           Door.new(:down, "08-01-03"),
-          Item.new("Anti-Venom"),
+          Item.new("Anti-Venom", id: "00"),
           Enemy.new("Winged Guard", id: "01", type: ["Persistent", "Air", "AirOnly", "Passthrough"]),
           ],
         "08-01-02", height: 5
         ),
       Rm.new("Southwest Descent", "Minera Prison Island", [
-          Door.new(:up, "08-00-02"),
+          Door.new(:up, "08-01-02"),
           Door.new(:left, "08-01-00", height: 3),
           Door.new(:left, "08-01-05"),
           Enemy.new("Axe Knight", id: "00", type: ["Range", "Platform"]),
@@ -2911,7 +2931,7 @@ end
       Rm.new("HP Room", "Minera Prison Island", [
           Door.new(:right, "08-01-03"),
           Door.new(:down, "08-01-06"),
-          Item.new("HP Max Up"),
+          Item.new("HP Max Up", id: "00"),
           Enemy.new("Invisible Man", id: "01", type: "Ambush"),
           Enemy.new("Spear Guard", id: "02", type: "Vanguard"),
           ],
@@ -2921,7 +2941,6 @@ end
           Door.new(:left, "08-01-04"),
           Door.new(:up, "08-01-05"),
           Door.new(:right, "08-01-07"),
-          Item.new("HP Max Up"),
           Enemy.new("Spear Guard", id: "00", type: "Vanguard"),
           Enemy.new("Bone Archer", id: "01", type: "Range"),
           Enemy.new("Bone Archer", id: "02", type: ["Range", "Vanguard"]),
@@ -2931,7 +2950,7 @@ end
       Rm.new("Albus Room", "Minera Prison Island", [
           Door.new(:left, "08-01-06"),
           Door.new(:right, "08-01-08"),
-          Item.new("HP Max Up"),
+          Item.new("Dominus Hatred", id: "00"),
           Enemy.new("The Creature", id: "02", type: ["Guard", "Vanguard"]),
           ],
         "08-01-07", width: 2
@@ -2940,7 +2959,7 @@ end
           Door.new(:left, "08-01-07"),
           Door.new(:up, "08-01-0A", width: 3),
           Door.new(:right, "08-01-09"),
-          Item.new("$500"),
+          Item.new("$500", id: "00"),
           ],
         "08-01-08", width: 3
         ),
@@ -2949,7 +2968,7 @@ end
           ],
         "08-01-09", is_important: true
         ),
-      Rm.new("Iron Maiden Room", "Minera Prison Island", [
+      Rm.new("Frank Room", "Minera Prison Island", [
           Door.new(:left, "08-01-0B"),
           Door.new(:down, "08-01-08", width: 3),
           Enemy.new("Invisible Man", id: "03", type: "Ambush"),
@@ -2976,11 +2995,11 @@ end
         ),
       ],[
       Rm.new("Northeast Ascent", "Minera Prison Island", [
-          Door.new(:right, "08-02-01", "magnesFlight", height: 3),
+          Door.new(:right, "08-02-01", :mineraEnd, height: 3),
           Door.new(:right, "08-02-02", height: 2),
           Door.new(:left, "08-01-0C"),
-          Item.new("HEART Max Up", "magnesFlight"),
-          Item.new("Konami Man", "magnesFlight"),
+          Item.new("HEART Max Up", :mineraEnd, id: "00"),
+          Item.new("Konami Man", :mineraEnd, id: "02"),
           Enemy.new("Spear Guard", id: "03", type: ["Vanguard", "Enclosed"]),
           ],
         "08-02-00", height: 3
@@ -3011,7 +3030,7 @@ end
         ),
       Rm.new("Electric Corridor", "Minera Prison Island", [
           Door.new(:right, "08-02-05"),
-          Item.new("Vol Fulgur"),
+          Item.new("Vol Fulgur", id: "00"),
           ],
         "08-02-03", width: 4
         ),
@@ -3021,11 +3040,11 @@ end
         "08-02-04", room_type: :teleporter
         ),
       Rm.new("East Lobby", "Minera Prison Island", [
-          Door.new(:left, "08-02-01", "magnesFlight", height: 3),
+          Door.new(:left, "08-02-01", :mineraEnd, height: 3),
           Door.new(:left, "08-02-04", height: 2),
           Door.new(:right, "08-02-06", height: 2),
           Door.new(:left, "08-02-03"),
-          Item.new("Falcis"),
+          Item.new("Falcis", id: "00"),
           Enemy.new("Bone Archer", id: "01", type: ["Range", "Platform", "Semi-Enclosed"]),
           Enemy.new("Bone Archer", id: "02", type: ["Range", "Vanguard", "Enclosed"]),
           ],
@@ -3034,7 +3053,7 @@ end
       Rm.new("Robot Plaza", "Minera Prison Island", [
           Door.new(:left, "08-02-05"),
           Door.new(:right, "08-02-07"),
-          Item.new("Strength Ring", "beatRobot"),
+          Item.new("Strength Ring", :beatRobot, id: "01"),
           Enemy.new("Tin Man", id: "01", type: ["Challenger", "Searchlight"]),
           Enemy.new("Demon", id: "02", type: ["Nuisance", "Vanguard"]),
           Enemy.new("Demon", id: "03", type: ["Nuisance", "Vanguard"]),
@@ -3043,7 +3062,7 @@ end
         ),
       Rm.new("Exit", "Minera Prison Island", [
           Door.new(:left, "08-02-06"),
-          Item.new("Glyph Sleeve"),
+          Item.new("Glyph Sleeve", id: "02"),
           ],
         "08-02-07", is_important: true
         ),
@@ -3054,7 +3073,7 @@ end
     manor_rooms = [ [
       Rm.new("Dark Room", "Mystery Manor", [
           Door.new(:right, "0E-00-01"),
-          Item.new("Vol Umbra"),
+          Item.new("Vol Umbra", id: "00"),
           ],
         "0E-00-00", width: 4
         ),
@@ -3069,8 +3088,8 @@ end
         ),
       Rm.new("Schnitzel Room", "Mystery Manor", [
           Door.new(:right, "0E-00-03", subroom: "Top"),
-          Item.new("Schnitzel"),
-          Item.new("$2000"),
+          Item.new("Schnitzel", id: "01"),
+          Item.new("$2000", id: "02"),
           Enemy.new("Flea Man", id: "03", type: ["Nuisance", "Floor", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("Flea Man", id: "04", type: ["Nuisance", "Floor", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("Flea Man", id: "05", type: ["Nuisance", "Floor", "Vanguard"]),
@@ -3078,8 +3097,8 @@ end
         "0E-00-02"
         ),
       Rm.new("West Stairs Top", "Mystery Manor", [
-          Door.new(:left, "0E-00-02", "smallDistance"),
-          Door.new(:right, "0E-00-04", "smallDistance"),
+          Door.new(:left, "0E-00-02"), #smallDistance
+          Door.new(:right, "0E-00-04"), #smallDistance
           Door.new(:down, "0E-00-03", subroom: "Bottom"),
           Enemy.new("Evil Force", id: "01", type: ["Seeker", "Platform", "Passthrough"])
           ],
@@ -3088,7 +3107,7 @@ end
       Rm.new("West Stairs Bottom", "Mystery Manor", [
           Door.new(:right, "0E-00-08"),
           Door.new(:down, "0E-00-01"),
-          Door.new(:up, "0E-00-03", "smallDistance", subroom: "Top"),
+          Door.new(:up, "0E-00-03", subroom: "Top"), #smallDistance
           Enemy.new("White Fomor", id: "02", type: ["Nuisance", "AirOnly", "Platform", "Passthrough"]),
           Enemy.new("White Fomor", id: "03", type: ["Nuisance", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("Mad Butcher", id: "04", type: ["Vanguard", "Enclosed"]),
@@ -3097,7 +3116,7 @@ end
         ),
       Rm.new("North Connector", "Mystery Manor", [
           Door.new(:left, "0E-00-03", subroom: "Top"),
-          Door.new(:right, "0E-00-06"),
+          Door.new(:right, "0E-00-06", subroom: "Top"),
           Enemy.new("White Fomor", id: "00", type: ["Nuisance", "Vanguard"]),
           Enemy.new("Evil Force", id: "01", type: ["Seeker", "Vanguard"])
           ],
@@ -3110,15 +3129,15 @@ end
         "0E-00-05", room_type: :save
         ),
       Rm.new("East Stairs Top", "Mystery Manor", [
-          Door.new(:left, "0E-00-04", "smallDistance"),
-          Door.new(:right, "0E-00-07", "smallDistance"),
+          Door.new(:left, "0E-00-04"), #smallDistance
+          Door.new(:right, "0E-00-07"), #smallDistance
           Door.new(:down, "0E-00-06", subroom: "Bottom"),
           ],
         "0E-00-06", "East Stairs", width: 2
         ),
       Rm.new("East Stairs Bottom", "Mystery Manor", [
           Door.new(:right, "0E-00-0A"),
-          Door.new(:up, "0E-00-06", "smallDistance", subroom: "Top"),
+          Door.new(:up, "0E-00-06", subroom: "Top"), #smallDistance
           Enemy.new("Mad Butcher", id: "00", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Mad Butcher", id: "01", type: "Vanguard"),
           Enemy.new("Mad Butcher", id: "02", type: ["Challenger", "Enclosed", "Platform"]),
@@ -3129,7 +3148,7 @@ end
         ),
       Rm.new("Flea Bank", "Mystery Manor", [
           Door.new(:left, "0E-00-06", subroom: "Top"),
-          Item.new("$2000"),
+          Item.new("$2000", id: "00"),
           Enemy.new("Flea Man", id: "01", type: ["Nuisance", "Floor", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("Flea Man", id: "02", type: ["Nuisance", "Floor", "Vanguard"]),
           ],
@@ -3137,7 +3156,7 @@ end
         ),
       Rm.new("Interior Dead End", "Mystery Manor", [
           Door.new(:left, "0E-00-03", subroom: "Bottom"),
-          Item.new("Gold Ore"),
+          Item.new("Gold Ore", id: "00"),
           Enemy.new("White Fomor", id: "01", type: ["Nuisance", "Vanguard"]),
           Enemy.new("Evil Force", id: "02", type: ["Seeker", "Vanguard"]),
           Enemy.new("Evil Force", id: "03", type: "Seeker"),
@@ -3147,16 +3166,16 @@ end
         ),
       Rm.new("Albus Room", "Mystery Manor", [
           Door.new(:left, "0E-00-05"),
-          Item.new("Dominus Agony"),
+          Item.new("Dominus Agony", id: "06"),
           ],
-        "0E-00-09", width: 2, room_req: "beatAlbus", is_important: true
+        "0E-00-09", width: 2, room_req: :beatAlbus, is_important: true
         ),
       Rm.new("Entrance Connector", "Mystery Manor", [
           Door.new(:left, "0E-00-06", subroom: "Bottom"),
           Door.new(:right, "0E-00-0B"),
           Enemy.new("Flea Man", id: "00", type: ["Nuisance", "Floor", "Vanguard"]),
           ],
-        "0E-00-0A"
+        "0E-00-0A", room_req: :mysteryManor
         ),
       Rm.new("Front Door", "Mystery Manor", [
           Door.new(:left, "0E-00-0A"),
@@ -3178,7 +3197,7 @@ end
     tymeo_rooms = [ [
       Rm.new("Entrance", "Tymeo Mountains", [
           Door.new(:left, "0A-00-02"),
-          Item.new("Blue Drops"),
+          Item.new("Blue Drops", id: "02"),
           ],
         "0A-00-00", room_type: :entrance, is_important: true
         ),
@@ -3238,7 +3257,7 @@ end
         ),
       Rm.new("Northwest Hub", "Tymeo Mountains", [
           Door.new(:left, "0A-00-09", height: 2),
-          Door.new(:right, "0A-00-0B", "tymeoJump", height: 2),
+          Door.new(:right, "0A-00-0B", :tymeoEast, height: 2),
           Door.new(:down, "0A-00-06"),
           Enemy.new("Winged Guard", id: "00", type: ["Persistent", "Air", "Offscreen"]),
           ],
@@ -3247,8 +3266,8 @@ end
       Rm.new("Northwest Underground", "Tymeo Mountains", [
           Door.new(:left, "0A-00-0A", height: 2),
           Door.new(:right, "0A-00-08"),
-          Item.new("MP Max Up"),
-          Item.new("Fides Fio"),
+          Item.new("MP Max Up", id: "01"),
+          Item.new("Fides Fio", id: "00"),
           Enemy.new("Skull Spider", id: "02", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Skull Spider", id: "03", type: ["Vanguard", "Enclosed"]),
           Enemy.new("Skull Spider", id: "04", type: ["Challenger", "Enclosed", "Separated"]),
@@ -3305,14 +3324,14 @@ end
           Door.new(:left, "0A-00-0C", false, subroom: "Left"),
           Door.new(:up, "0A-00-0C", false, subroom: "Top"),
           Door.new(:right, "0A-00-0E"),
-          Item.new("Devil Ring", "Paries"),
-          Item.new("Moonwalkers", "Paries"),
-          Item.new("Crimson Mask"),
+          Item.new("Devil Ring", :hasParies, id: "02"),
+          Item.new("Moonwalkers", :hasParies, id: "01"),
+          Item.new("Crimson Mask", id: "00"),
           ],
         "0A-00-0C", "Paries Underground", width: 3
         ),
       Rm.new("North-Central Hub", "Tymeo Mountains", [
-          Door.new(:left, "0A-00-0C", "smallDistance", subroom: "Top", height: 2),
+          Door.new(:left, "0A-00-0C", subroom: "Top", height: 2), #smallDistance
           Door.new(:right, "0A-00-10", height: 2),
           Door.new(:down, "0A-00-0E"),
           Enemy.new("Rock Knight", id: "05", type: ["Range", "Vanguard"]),
@@ -3339,7 +3358,7 @@ end
       Rm.new("Demon Underground", "Tymeo Mountains", [
           Door.new(:left, "0A-00-0D"),
           Door.new(:right, "0A-00-11", height: 2),
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", id: "00"),
           Enemy.new("Fire Demon", id: "01", type: ["Nuisance", "Vanguard", "Enclosed"]),
           Enemy.new("Bone Pillar", id: "02", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Skull Spider", id: "03", type: ["Challenger", "Enclosed", "Separated"]),
@@ -3352,7 +3371,7 @@ end
       Rm.new("Northeast Underground", "Tymeo Mountains", [
           Door.new(:left, "0A-00-10"),
           Door.new(:right, "0A-00-12", height: 3),
-          Item.new("Emperor Ring"),
+          Item.new("Emperor Ring", id: "00"),
           Enemy.new("Cave Troll", id: "03", type: ["Threat", "Platform"]),
           Enemy.new("Scarecrow", id: "04", type: ["Nuisance", "Floor", "Vanguard", "Semi-Enclosed"]),
           Enemy.new("Scarecrow", id: "05", type: ["Nuisance", "Floor", "Semi-Enclosed"]),
@@ -3371,8 +3390,8 @@ end
         "0A-00-11", width: 4, height: 3
         ),
       Rm.new("Northeast Hub", "Tymeo Mountains", [
-          Door.new(:left, "0A-00-11", "highJump", height: 2),
-          Door.new(:right, "0A-00-13", "highJump", height: 2),
+          Door.new(:left, "0A-00-11", :highJump, height: 2),
+          Door.new(:right, "0A-00-13", :highJump, height: 2),
           Door.new(:down, "0A-00-14"),
           Enemy.new("Black Crow", id: "02", type: ["Seeker", "Vanguard"]),
           ],
@@ -3416,7 +3435,7 @@ end
           Door.new(:left, "0A-01-03", height: 2),
           Door.new(:right, "0A-01-02", height: 3),
           Door.new(:down, "0A-01-00"),
-          Item.new("Mushroom"),
+          Item.new("Mushroom", id: "01"),
           Enemy.new("Skull Spider", id: "02", type: ["Challenger", "Enclosed", "Separated", "Platform"]),
           Enemy.new("Skull Spider", id: "03", type: ["Challenger", "Enclosed", "Platform"]),
           ],
@@ -3427,11 +3446,11 @@ end
           Door.new(:right, "0A-00-04"),
           Enemy.new("Medusa Head", id: "07", type: ["Persistent", "Air", "Offscreen", "Hardmode"]),
           ],
-        "0A-01-02", room_req: "magnesFlight", width: 3
+        "0A-01-02", room_req: :tymeoMidway, width: 3
         ),
       Rm.new("Empress Room", "Tymeo Mountains", [
           Door.new(:right, "0A-01-01"),
-          Item.new("Empress Ring"),
+          Item.new("Empress Ring", id: "00"),
           ],
         "0A-01-03"
         ),
@@ -3468,10 +3487,10 @@ end
         "0A-01-07", width: 2
         ),
       Rm.new("Spider Descent", "Tymeo Mountains", [
-          Door.new(:left, "0A-00-16", "highJump", height: 3),
+          Door.new(:left, "0A-00-16", :highJump, height: 3),
           Door.new(:left, "0A-01-07"),
-          Item.new("HP Max Up"),
-          Item.new("Ruby"),
+          Item.new("HP Max Up", id: "00"),
+          Item.new("Ruby", id: "03"),
           Enemy.new("Skull Spider", id: "06", type: ["Challenger", "Enclosed", "Separated", "Platform"]),
           Enemy.new("Skull Spider", id: "07", type: ["Challenger", "Enclosed", "Separated", "Platform"]),
           ],
@@ -3479,7 +3498,7 @@ end
         ),
       Rm.new("Wind Room", "Tymeo Mountains", [
           Door.new(:right, "0A-01-06"),
-          Item.new("Pneuma"),
+          Item.new("Pneuma", :pneumaPuzzle, id: "00"),
           ],
         "0A-01-09", height: 3
         ),
@@ -3493,24 +3512,24 @@ end
           ],
         "06-00-00", room_type: :entrance, is_important: true
         ),
-      Rm.new("Shallows Far Left", "Tymeo Mountains", [
+      Rm.new("Shallows Far Left", "Kalidus Channel", [
           Door.new(:left, "06-00-00", height: 2),
           Door.new(:right, "06-00-02", height: 2),
-          Door.new(:right, "06-00-02", "underwater"),
-          Item.new("HEART Max Up", "underwater"),
+          Door.new(:right, "06-00-02", :underwater),
+          Item.new("HEART Max Up", :underwater, id: "00"),
           Enemy.new("Needles", id: "0A", type: ["Guard", "Air", "Water"]),
           Enemy.new("Nominon", id: "0B", type: ["Nuisance", "Vanguard", "Platform", "Passthrough"]),
           Enemy.new("Killer Fish", id: "0C", type: "Nuisance"),
           ],
         "06-00-01", width: 2, height: 2
         ),
-      Rm.new("Shallows Mid Left", "Tymeo Mountains", [
+      Rm.new("Shallows Mid Left", "Kalidus Channel", [
           Door.new(:left, "06-00-01", height: 2),
-          Door.new(:left, "06-00-01", "underwater"),
+          Door.new(:left, "06-00-01", :underwater),
           Door.new(:right, "06-00-03", height: 2),
-          Door.new(:right, "06-00-03", "underwater"),
+          Door.new(:right, "06-00-03", :underwater),
           Door.new(:down, "06-00-0C", false, width: 2),
-          Item.new("Chamomile", "underwater"),
+          Item.new("Chamomile", :underwater, id: "00"),
           Enemy.new("Needles", id: "0F", type: ["Guard", "Air", "Water", "Platform", "Vanguard"]),
           Enemy.new("Needles", id: "10", type: ["Guard", "Air", "Water", "Platform"]),
           Enemy.new("Needles", id: "11", type: ["Guard", "Air", "Water", "Platform"]),
@@ -3524,9 +3543,9 @@ end
           ],
         "06-00-02", width: 3, height: 2
         ),
-      Rm.new("Shallows Near Left", "Tymeo Mountains", [
+      Rm.new("Shallows Near Left", "Kalidus Channel", [
           Door.new(:left, "06-00-02", height: 2),
-          Door.new(:left, "06-00-02", "underwater"),
+          Door.new(:left, "06-00-02", :underwater),
           Door.new(:right, "06-00-04", height: 2),
           Enemy.new("Needles", id: "0D", type: ["Guard", "Air", "Water", "Platform", "Vanguard"]),
           Enemy.new("Needles", id: "0E", type: ["Guard", "Air", "Water", "Platform", "Vanguard"]),
@@ -3544,6 +3563,7 @@ end
       Rm.new("Jacob's Room", "Kalidus Channel", [
           Door.new(:left, "06-00-03"),
           Door.new(:right, "06-00-05"),
+          Item.new("Magical Ticket", id: "01"),
           ],
         "06-00-04", is_important: true
         ),
@@ -3559,11 +3579,12 @@ end
           ],
         "06-00-06"
         ),
-      Rm.new("Shallows Near Right", "Tymeo Mountains", [
+      Rm.new("Shallows Near Right", "Kalidus Channel", [
           Door.new(:left, "06-00-06", height: 2),
           Door.new(:right, "06-00-08", height: 2),
-          Door.new(:right, "06-00-08", "underwater"),
-          Item.new("MP Max Up", "underwater"),
+          Door.new(:right, "06-00-08", :underwater),
+          Item.new("Twinbee", id: "04"),
+          Item.new("MP Max Up", :underwater, id: "00"),
           Enemy.new("Merman", id: "0E", type: ["Challenger", "Air", "Water"]),
           Enemy.new("Merman", id: "0F", type: ["Challenger", "Air", "Water", "Platform"]),
           Enemy.new("Sea Stinger", id: "10", type: ["Persistent", "Air", "Water", "Platform"]),
@@ -3571,11 +3592,11 @@ end
           ],
         "06-00-07", width: 3, height: 2
         ),
-      Rm.new("Shallows Mid Right", "Tymeo Mountains", [
+      Rm.new("Shallows Mid Right", "Kalidus Channel", [
           Door.new(:left, "06-00-07", height: 2),
-          Door.new(:left, "06-00-07", "underwater"),
+          Door.new(:left, "06-00-07", :underwater),
           Door.new(:right, "06-00-09", height: 2),
-          Door.new(:right, "06-00-09", "underwater"),
+          Door.new(:right, "06-00-09", :underwater),
           Door.new(:down, "06-00-14", false, width: 2),
           Enemy.new("Merman", id: "0B", type: ["Challenger", "Air", "Water", "Platform"]),
           Enemy.new("Merman", id: "0C", type: ["Challenger", "Air", "Water"]),
@@ -3584,11 +3605,11 @@ end
           ],
         "06-00-08", width: 3, height: 2
         ),
-      Rm.new("Shallows Far Right", "Tymeo Mountains", [
+      Rm.new("Shallows Far Right", "Kalidus Channel", [
           Door.new(:left, "06-00-08", height: 2),
-          Door.new(:left, "06-00-08", "underwater"),
+          Door.new(:left, "06-00-08", :underwater),
           Door.new(:right, "06-00-0A", height: 2),
-          Item.new("HP Max Up", "underwater"),
+          Item.new("HP Max Up", :underwater, id: "00"),
           Enemy.new("Merman", id: "06", type: ["Vanguard", "Air", "Water", "Platform"]),
           ],
         "06-00-09", width: 2, height: 2
@@ -3599,7 +3620,7 @@ end
         "06-00-0A", is_important: true
         ),
       Rm.new("West Teleporter", "Kalidus Channel", [
-          Door.new(:right, "06-00-0C", "underwater"),
+          Door.new(:right, "06-00-0C", :underwater),
           ],
         "06-00-0B", room_type: :teleporter
         ),
@@ -3613,14 +3634,14 @@ end
           Enemy.new("Needles", id: "05", type: ["Guard", "Air", "AirOnly"]),
           Enemy.new("Needles", id: "06", type: ["Guard", "Air", "AirOnly"]),
           ],
-        "06-00-0C", room_req: "underwater", height: 3
+        "06-00-0C", room_req: :underwater, height: 3
         ),
       Rm.new("West Pre-Balloon", "Kalidus Channel", [
           Door.new(:left, "06-00-0C"),
           Door.new(:right, "06-00-0E", height: 3),
           Door.new(:right, "06-00-0E", height: 2),
           Door.new(:right, "06-00-0E"),
-          Item.new("Fortis Fio"),
+          Item.new("Fortis Fio", id: "01"),
           Enemy.new("Merman", id: "02", type: "Range"),
           Enemy.new("Merman", id: "03", type: "Range"),
           Enemy.new("Merman", id: "04", type: "Range"),
@@ -3631,7 +3652,7 @@ end
           Enemy.new("Needles", id: "09", type: ["Guard", "Air", "Semi-Enclosed", "Vanguard", "Platform"]),
           Enemy.new("Needles", id: "0A", type: ["Guard", "Air", "Enclosed", "Ambush"]),
           ],
-        "06-00-0D", room_req: "underwater", width: 2, height: 3
+        "06-00-0D", room_req: :underwater, width: 2, height: 3
         ),
       Rm.new("West Hub", "Kalidus Channel", [
           Door.new(:left, "06-00-0D", height: 3),
@@ -3642,7 +3663,7 @@ end
           Enemy.new("Gelso", id: "00", type: ["Seeker", "AirOnly"]),
           Enemy.new("Needles", id: "01", type: ["Guard", "Air", "Enclosed"]),
           ],
-        "06-00-0E", room_req: "underwater", height: 3
+        "06-00-0E", room_req: :underwater, height: 3
         ),
       Rm.new("West Jellyfish", "Kalidus Channel", [
           Door.new(:left, "06-01-02"),
@@ -3656,24 +3677,24 @@ end
           Enemy.new("Gelso", id: "07", type: ["Seeker", "Platform"]),
           Enemy.new("Gelso", id: "08", type: ["Seeker", "Vanguard"]),
           ],
-        "06-00-0F", room_req: "underwater", width: 3, height: 2
+        "06-00-0F", room_req: :underwater, width: 3, height: 2
         ),
       Rm.new("Scutum Room", "Kalidus Channel", [
           Door.new(:left, "06-00-0F"),
           Door.new(:up, "06-00-0E"),
-          Item.new("Scutum"),
+          Item.new("Scutum", id: "00"),
           Enemy.new("Merman", id: "01", type: ["Range", "Platform"]),
           Enemy.new("Needles", id: "02", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Needles", id: "03", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Needles", id: "04", type: ["Guard", "Air", "Enclosed", "Separated"]),
           ],
-        "06-00-10", room_req: "underwater", height: 2
+        "06-00-10", room_req: :underwater, height: 2
         ),
       Rm.new("Lower Save", "Kalidus Channel", [
           Door.new(:left, "06-00-0E"),
           Door.new(:right, "06-00-12"),
           ],
-        "06-00-11", room_type: :save, room_req: "underwater"
+        "06-00-11", room_type: :save, room_req: :underwater
         ),
       Rm.new("Lower Connector", "Kalidus Channel", [
           Door.new(:left, "06-00-11"),
@@ -3684,19 +3705,19 @@ end
           Enemy.new("Gelso", id: "04", type: "Seeker"),
           Enemy.new("Gelso", id: "05", type: "Seeker"),
           ],
-        "06-00-12", room_req: "underwater", width: 4
+        "06-00-12", room_req: :underwater, width: 4
         ),
       Rm.new("East Hub", "Kalidus Channel", [
-          Door.new(:left, "06-00-14", height: 3),
-          Door.new(:left, "06-00-16", height: 2),
-          Door.new(:right, "06-00-13"),
+          Door.new(:left, "06-00-12"),
+          Door.new(:right, "06-00-14", height: 3),
+          Door.new(:right, "06-00-16", height: 2),
           Enemy.new("Fishhead", id: "01", type: ["Range", "Enclosed", "Platform"]),
           Enemy.new("Dark Octopus", id: "02", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Dark Octopus", id: "03", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Needles", id: "04", type: ["Guard", "Air", "Enclosed", "Platform"]),
           Enemy.new("Needles", id: "05", type: ["Guard", "Air", "Vanguard", "AirOnly"]),
           ],
-        "06-00-13", room_req: "underwater", height: 3
+        "06-00-13", room_req: :underwater, height: 3
         ),
       Rm.new("East Balloon", "Kalidus Channel", [
           Door.new(:left, "06-00-13"),
@@ -3704,15 +3725,15 @@ end
           Door.new(:up, "06-00-08"),
           Enemy.new("Gelso", id: "00", type: ["Persistent", "Air"]),
           ],
-        "06-00-14", room_req: "underwater", width: 3
+        "06-00-14", room_req: :underwater, width: 3
         ),
       Rm.new("East Balloon Treasure", "Kalidus Channel", [
           Door.new(:left, "06-00-14"),
-          Item.new("MP Max Up"),
-          Item.new("HP Max Up"),
-          Item.new("HEART Max Up"),
+          Item.new("MP Max Up", id: "01"),
+          Item.new("Super Potion", id: "00"),
+          Item.new("HEART Max Up", id: "02"),
           ],
-        "06-00-15", room_req: "underwater"
+        "06-00-15", room_req: :underwater
         ),
       Rm.new("Octopus Connector", "Kalidus Channel", [
           Door.new(:left, "06-00-13"),
@@ -3722,28 +3743,29 @@ end
           Enemy.new("Dark Octopus", id: "02", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Dark Octopus", id: "03", type: ["Guard", "Enclosed", "Separated"]),
           ],
-        "06-00-16", room_req: "underwater", width: 3
+        "06-00-16", room_req: :underwater, width: 3
         ),
       Rm.new("East Bone Tower", "Kalidus Channel", [
           Door.new(:left, "06-00-16", height: 3),
           Door.new(:left, "06-00-18", height: 2),
           Door.new(:left, "06-00-1A"),
+          Item.new("Sapphire", id: "00"),
           Enemy.new("Fishhead", id: "01", type: ["Range", "Vanguard"]),
           Enemy.new("Fishhead", id: "02", type: ["Range", "Platform"]),
           Enemy.new("Needles", id: "03", type: ["Guard", "Vanguard"]),
           Enemy.new("Gelso", id: "04", type: ["Seeker", "AirOnly", "Vanguard"]),
           Enemy.new("Gelso", id: "05", type: ["Seeker", "AirOnly", "Vanguard"]),
           ],
-        "06-00-17", room_req: "underwater", height: 3
+        "06-00-17", room_req: :underwater, height: 3
         ),
       Rm.new("East HP Room", "Kalidus Channel", [
           Door.new(:right, "06-00-17"),
-          Item.new("HP Max Up"),
+          Item.new("HP Max Up", id: "00"),
           Enemy.new("Sea Demon", id: "01", type: "Nuisance"),
           Enemy.new("Merman", id: "02", type: "Challenger"),
           Enemy.new("Fishhead", id: "03", type: ["Guard", "Semi-Enclosed"]),
           ],
-        "06-00-18", room_req: "underwater", width: 3
+        "06-00-18", room_req: :underwater, width: 3
         ),
       Rm.new("Southeast Bend", "Kalidus Channel", [
           Door.new(:right, "06-00-1A", height: 3),
@@ -3753,14 +3775,14 @@ end
           Enemy.new("Killer Fish", id: "02", type: ["Nuisance", "Platform"]),
           Enemy.new("Needles", id: "03", type: ["Guard", "Air", "Enclosed"]),
           ],
-        "06-00-19", room_req: "underwater", height: 3
+        "06-00-19", room_req: :underwater, height: 3
         ),
       Rm.new("Anti-Venom Room", "Kalidus Channel", [
           Door.new(:left, "06-00-19", height: 2),
           Door.new(:right, "06-00-17", height: 2),
           Door.new(:right, "06-00-1B"),
-          Item.new("HEART Max Up"),
-          Item.new("Anti-Venom"),
+          Item.new("HEART Max Up", id: "00"),
+          Item.new("Anti-Venom", id: "02"),
           Enemy.new("Needles", id: "03", type: ["Guard", "Air", "Semi-Enclosed"]),
           Enemy.new("Needles", id: "04", type: ["Guard", "Enclosed"]),
           Enemy.new("Needles", id: "05", type: ["Guard", "Enclosed"]),
@@ -3771,37 +3793,37 @@ end
           Enemy.new("Merman", id: "0A", type: ["Vanguard", "Semi-Enclosed"]),
           Enemy.new("Killer Fish", id: "0B", type: ["Nuisance", "Platform"]),
           ],
-        "06-00-1A", room_req: "underwater", width: 3, height: 2
+        "06-00-1A", room_req: :underwater, width: 3, height: 2
         ),
       Rm.new("East Teleporter", "Kalidus Channel", [
           Door.new(:left, "06-00-1A"),
           ],
-        "06-00-1B", room_type: :teleporter, room_req: "underwater"
+        "06-00-1B", room_type: :teleporter, room_req: :underwater
         ),
       ],[
       Rm.new("Lower Exit", "Kalidus Channel", [
           Door.new(:right, "06-01-01"),
           ],
-        "06-01-00", is_important: true, room_req: "underwater"
+        "06-01-00", is_important: true, room_req: :underwater
         ),
       Rm.new("Southwest Lobby", "Kalidus Channel", [
           Door.new(:left, "06-01-00"),
           Door.new(:right, "06-01-02", height: 2),
           Door.new(:right, "06-01-03"),
-          Item.new("Iron Ore"),
+          Item.new("Iron Ore", id: "00"),
           Enemy.new("Sea Demon", id: "01", type: ["Nuisance", "Platform", "AirOnly"]),
           Enemy.new("Sea Demon", id: "02", type: "Nuisance"),
           Enemy.new("Needles", id: "05", type: ["Guard", "Air", "Enclosed"]),
           Enemy.new("Gelso", id: "06", type: ["Seeker", "Vanguard"]),
           Enemy.new("Gelso", id: "07", type: ["Seeker", "AirOnly"]),
           ],
-        "06-01-01", room_req: "underwater", width: 3, height: 2
+        "06-01-01", room_req: :underwater, width: 3, height: 2
         ),
       Rm.new("Southwest Loading", "Kalidus Channel", [
           Door.new(:left, "06-01-01"),
           Door.new(:right, "06-00-0F"),
           ],
-        "06-01-02", room_type: :loading, room_req: "underwater"
+        "06-01-02", room_type: :loading, room_req: :underwater
         ),
       Rm.new("Southwest Octopi", "Kalidus Channel", [
           Door.new(:left, "06-01-01"),
@@ -3810,7 +3832,7 @@ end
           Enemy.new("Dark Octopus", id: "01", type: ["Guard", "Enclosed", "Vanguard"]),
           Enemy.new("Dark Octopus", id: "02", type: ["Guard", "Enclosed", "Vanguard"]),
           ],
-        "06-01-03", room_req: "underwater", width: 2
+        "06-01-03", room_req: :underwater, width: 2
         ),
       Rm.new("Ship Top", "Kalidus Channel", [
           Door.new(:left, "06-01-03"),
@@ -3820,17 +3842,17 @@ end
           Enemy.new("Killer Fish", id: "0C", type: ["Nuisance", "Semi-Enclosed"]),
           Enemy.new("Needles", id: "0D", type: ["Guard", "Air", "Semi-Enclosed"]),
           ],
-        "06-01-04", "Ship", room_req: "underwater", width: 4
+        "06-01-04", "Ship", room_req: :underwater, width: 4
         ),
       Rm.new("Ship Bottom", "Kalidus Channel", [
           Door.new(:up, "06-01-04", subroom: "Bottom", width: 4),
           Door.new(:right, "06-01-05"),
-          Item.new("$1000"),
-          Item.new("$1000"),
-          Item.new("$1000"),
-          Item.new("MP Max Up"),
-          Item.new("Emerald"),
-          Item.new("Magician Ring"),
+          Item.new("$1000", id: "04"),
+          Item.new("$1000", id: "05"),
+          Item.new("$1000", id: "06"),
+          Item.new("MP Max Up", id: "03"),
+          Item.new("Emerald", id: "02"),
+          Item.new("Magician Ring", id: "01"),
           Enemy.new("Merman", id: "0E", type: ["Challenger", "Enclosed", "Separated", "Wall"]),
           Enemy.new("Merman", id: "0F", type: ["Challenger", "Enclosed", "Separated"]),
           Enemy.new("Skull Spider", id: "10", type: ["Challenger", "Enclosed"]),
@@ -3847,12 +3869,12 @@ end
           Door.new(:left, "06-00-19"),
           Door.new(:right, "06-01-07"),
           ],
-        "06-01-06", room_type: :loading, room_req: "underwater"
+        "06-01-06", room_type: :loading, room_req: :underwater
         ),
       Rm.new("Southeast Lobby", "Kalidus Channel", [
           Door.new(:left, "06-01-06", height: 2),
           Door.new(:right, "06-01-08", height: 2),
-          Item.new("Potion"),
+          Item.new("Potion", id: "00"),
           Enemy.new("Merman", id: "01", type: ["Range", "Separated"]),
           Enemy.new("Merman", id: "02", type: ["Range", "Separated"]),
           Enemy.new("Merman", id: "03", type: ["Range", "Separated"]),
@@ -3865,19 +3887,19 @@ end
           Enemy.new("Needles", id: "0A", type: ["Guard", "Enclosed", "Separated"]),
           Enemy.new("Killer Fish", id: "0B", type: ["Nuisance", "Vanguard", "Platform"]),
           ],
-        "06-01-07", room_req: "underwater", width: 3, height: 2
+        "06-01-07", room_req: :underwater, width: 3, height: 2
         ),
       Rm.new("Southeast Water Entry", "Kalidus Channel", [
           Door.new(:left, "06-01-07"),
           Door.new(:right, "06-01-09"),
           Enemy.new("Killer Fish", id: "01", type: ["Nuisance", "Enclosed", "Floor"]),
           ],
-        "06-01-08", room_req: "underwater"
+        "06-01-08", room_req: :underwater
         ),
       Rm.new("Lower Entrance", "Kalidus Channel", [
-          Door.new(:left, "06-01-08"),
+          Door.new(:left, "06-01-08", :kalidusDepths),
           ],
-        "06-01-09", is_important: true
+        "06-01-09", room_type: :entrance, is_important: true
         ),
     ] ]
   end
@@ -3886,12 +3908,13 @@ end
     oblivion_rooms = [ [
       Rm.new("Church", "Oblivion Ridge", [
           Door.new(:right, "10-00-01"),
+          Item.new("Hermit Ring", id: "02"),
           ],
         "10-00-00", is_important: true, width: 2
         ),
       Rm.new("Church Door", "Oblivion Ridge", [
           Door.new(:left, "10-00-00"),
-          Door.new(:right, "10-00-02"),
+          Door.new(:right, "10-01-00"),
           ],
         "10-00-01", room_type: :loading, is_important: true
         ),
@@ -3910,9 +3933,9 @@ end
       Rm.new("West Hill", "Oblivion Ridge", [
           Door.new(:left, "10-01-00", height: 2),
           Door.new(:right, "10-01-02"),
-          Item.new("Diamond"),
-          Item.new("Chamomile", "oblivionJump"),
-          Enemy.new("Werewolf", id: "04", type: ["Range", "Vanguard"]),
+          Item.new("Diamond", id: "02"),
+          Item.new("Chamomile", :oblivionJump, id: "03"),
+          Enemy.new("Werewolf", id: "04", type: ["Range", "Vanguard", "Divekick"]),
           Enemy.new("Werewolf", id: "05", type: "Challenger"),
           Enemy.new("Lizardman", id: "06", type: "Vanguard"),
           Enemy.new("Stone Rose", id: "07", type: ["Range", "Vanguard"]),
@@ -3920,23 +3943,23 @@ end
         "10-01-01", width: 2, height: 2
         ),
       Rm.new("Boss Room", "Oblivion Ridge", [
-          Door.new(:left, "10-00-01"),
-          Door.new(:right, "10-00-03"),
+          Door.new(:left, "10-01-01"),
+          Door.new(:right, "10-01-03"),
           ],
-        "10-00-02", is_important: true, room_req: "beatFish", width: 3
+        "10-01-02", is_important: true, room_req: :beatFish, width: 3
         ),
       Rm.new("East Hill", "Oblivion Ridge", [
           Door.new(:left, "10-01-02"),
           Door.new(:right, "10-01-04", height: 2),
           Door.new(:right, "10-01-05"),
-          Item.new("Sapiens Fio", "oblivionJump"),
-          Enemy.new("Altair", id: "02", type: ["Persistent", "Air", "Vanguard"]),
+          Item.new("Sapiens Fio", :oblivionJump, id: "01"),
+          Enemy.new("Altair", id: "02", type: ["Persistent", "Air", "Vanguard", "Divekick"]),
           ],
         "10-01-03", width: 2, height: 2
         ),
       Rm.new("East Path", "Oblivion Ridge", [
-          Door.new(:left, "10-00-01"),
-          Door.new(:right, "10-01-01"),
+          Door.new(:left, "10-01-03"),
+          Door.new(:right, "10-01-06"),
           Enemy.new("Werewolf", id: "00", type: "Challenger"),
           Enemy.new("Altair", id: "01", type: ["Persistent", "Vanguard"]),
           Enemy.new("Altair", id: "02", type: ["Persistent", "Vanguard"]),
@@ -3947,14 +3970,14 @@ end
         "10-01-04", width: 4
         ),
       Rm.new("Boss Save", "Oblivion Ridge", [
-          Door.new(:left, "10-00-03"),
+          Door.new(:left, "10-01-03"),
           ],
-        "10-00-05", room_type: :save
+        "10-01-05", room_type: :save
         ),
       Rm.new("Entrance", "Oblivion Ridge", [
-          Door.new(:left, "10-00-04"),
+          Door.new(:left, "10-01-04"),
           ],
-        "10-00-06", room_type: :entrance, is_important: true
+        "10-01-06", room_type: :entrance, is_important: true
         ),
     ] ]
   end
@@ -3969,7 +3992,7 @@ end
       Rm.new("West Shallows Beach", "Somnus Reef", [
           Door.new(:left, "07-00-00", height: 2),
           Door.new(:right, "07-00-02", height: 2),
-          Door.new(:right, "07-00-02", "underwater"),
+          Door.new(:right, "07-00-02", :underwater),
           Enemy.new("Merman", id: "05", type: ["Challenger", "Air", "Water", "Platform"]),
           Enemy.new("Merman", id: "06", type: ["Challenger", "Air", "Water", "Platform", "Vanguard"]),
           Enemy.new("Decarabia", id: "07", type: ["Guard", "Platform"]),
@@ -3977,12 +4000,12 @@ end
           Enemy.new("Balloon", id: "0B", type: ["Nuisance", "Vanguard", "Hardmode"]),
           Enemy.new("Balloon", id: "0C", type: ["Nuisance", "Water", "Vanguard", "Hardmode"]),
           ],
-        "07-00-01", width: 2, height: 2
+        "07-00-01", width: 2, height: 2, room_req: :somnusWest
         ),
       Rm.new("West Shallows Descent", "Somnus Reef", [
           Door.new(:left, "07-00-01", height: 2),
-          Door.new(:left, "07-00-01", "underwater"),
-          Door.new(:down, "07-00-04", "underwater", width: 3),
+          Door.new(:left, "07-00-01", :underwater),
+          Door.new(:down, "07-00-04", :underwater, width: 3),
           Door.new(:right, "07-00-03", height: 2),
           Enemy.new("Merman", id: "01", type: ["Challenger", "Air", "Water", "Platform", "Vanguard"]),
           Enemy.new("Merman", id: "02", type: ["Challenger", "Air", "Water", "Platform"]),
@@ -4005,14 +4028,14 @@ end
         ),
       Rm.new("Entry Shaft", "Somnus Reef", [
           Door.new(:up, "07-00-02"),
-          Item.new("$2000"),
+          Item.new("$2000", id: "02"),
           Door.new(:right, "07-00-05"),
           Enemy.new("Sea Demon", id: "03", type: ["Nuisance", "Enclosed", "Floor"]),
           Enemy.new("Sea Demon", id: "04", type: ["Nuisance", "Enclosed", "Floor", "Separated"]),
           Enemy.new("Needles", id: "05", type: ["Guard", "Semi-Enclosed", "Floor"]),
           Enemy.new("Needles", id: "06", type: ["Guard", "Enclosed", "Floor"]),
           ],
-        "07-00-04", height: 3, room_req: "underwater"
+        "07-00-04", height: 3, room_req: :underwater
         ),
       Rm.new("M-Shaped Room", "Somnus Reef", [
           Door.new(:left, "07-00-04"),
@@ -4020,23 +4043,23 @@ end
           Enemy.new("Edimmu", id: "01", type: ["Seeker", "AirOnly"]),
           Enemy.new("Merman", id: "02", type: ["Challenger", "Semi-Enclosed", "Separated"]),
           ],
-        "07-00-05", width: 3, height: 2, room_req: "underwater"
+        "07-00-05", width: 3, height: 2, room_req: :underwater
         ),
       Rm.new("Anna's Room", "Somnus Reef", [
           Door.new(:right, "07-00-07"),
           ],
-        "07-00-06", room_req: "underwater", is_important: true
+        "07-00-06", room_req: :underwater, is_important: true
         ),
       Rm.new("West Greater Starfish Room", "Somnus Reef", [
           Door.new(:left, "07-00-06", height: 2),
-          Item.new("Reinforced Suit"),
+          Item.new("Reinforced Suit", id: "00"),
           Door.new(:right, "07-00-08", height: 2),
           Enemy.new("Decarabia", id: "03", type: ["Guard", "Enclosed"]),
           Enemy.new("Decarabia", id: "04", type: ["Guard", "Air", "Wall"]),
           Enemy.new("Decarabia", id: "05", type: ["Guard", "Semi-Enclosed", "Platform"]),
           Enemy.new("Decarabia", id: "06", type: ["Guard", "Air", "Wall"]),
           ],
-        "07-00-07", width: 3, height: 2, room_req: "underwater"
+        "07-00-07", width: 3, height: 2, room_req: :underwater
         ),
       Rm.new("West Lesser Starfish Room", "Somnus Reef", [
           Door.new(:left, "07-00-07", height: 3),
@@ -4045,32 +4068,32 @@ end
           Enemy.new("Decarabia", id: "00", type: ["Guard", "Vanguard"]),
           Enemy.new("Decarabia", id: "01", type: ["Guard", "Air"]),
           ],
-        "07-00-08", height: 3, room_req: "underwater"
+        "07-00-08", height: 3, room_req: :underwater
         ),
       Rm.new("Fish Tank", "Somnus Reef", [
           Door.new(:left, "07-00-08"),
           Door.new(:up, "07-00-05"),
-          Item.new("MP Max Up"),
-          Item.new("Vol Arcus"),
+          Item.new("MP Max Up", id: "02"),
+          Item.new("Vol Arcus", id: "01"),
           Enemy.new("Lorelai", id: "04", type: ["Guard", "Air", "AirOnly"]),
           Enemy.new("Lorelai", id: "05", type: ["Guard", "Air", "AirOnly"]),
           Enemy.new("Lorelai", id: "06", type: ["Guard", "Air", "AirOnly"]), #Needs review
           Enemy.new("Fishhead", id: "07", type: ["Range", "Enclosed"]),
           Enemy.new("Fishhead", id: "08", type: ["Range", "Enclosed"]),
           ],
-        "07-00-09", width: 2, height: 3, room_req: "underwater"
+        "07-00-09", width: 2, height: 3, room_req: :underwater
         ),
       Rm.new("Serge's Room", "Somnus Reef", [
-          Item.new("Vic Viper"),
+          Item.new("Vic Viper", id: "01"),
           Door.new(:right, "07-00-0B"),
           ],
         "07-00-0A", is_important: true
         ),
       Rm.new("East Shallows Ascent", "Somnus Reef", [
           Door.new(:left, "07-00-0A", height: 2),
-          Door.new(:down, "07-00-0C", "underwater"),
+          Door.new(:down, "07-00-0C", :underwater),
           Door.new(:right, "07-00-0D", height: 2),
-          Door.new(:right, "07-00-0D", "underwater"),
+          Door.new(:right, "07-00-0D", :underwater),
           Enemy.new("Edimmu", id: "01", type: ["Seeker", "Platform", "Vanguard"]),
           Enemy.new("Saint Elmo", id: "02", type: ["Persistent", "Air", "Water", "Platform", "Vanguard"]),
           ],
@@ -4082,17 +4105,17 @@ end
           Enemy.new("Decarabia", id: "01", type: ["Guard", "Air", "Enclosed"]),
           Enemy.new("Decarabia", id: "02", type: ["Guard", "Air", "Vanguard"]),
           ],
-        "07-00-0C", height: 3, room_req: "underwater"
+        "07-00-0C", height: 3, room_req: :underwater
         ),
       Rm.new("East Shallows Beach", "Somnus Reef", [
           Door.new(:left, "07-00-0C", height: 2),
-          Door.new(:left, "07-00-0C", "underwater"),
-          Item.new("Vol Ascia"),
+          Door.new(:left, "07-00-0C", :underwater),
+          Item.new("Vol Ascia", id: "01"),
           Door.new(:right, "07-00-0E", height: 2),
           Enemy.new("Edimmu", id: "02", type: ["Seeker", "Platform", "Vanguard"]),
           Enemy.new("Saint Elmo", id: "03", type: ["Persistent", "Air", "Water", "Platform", "Vanguard"]),
           ],
-        "07-00-0D", width: 2, height: 2, room_req: "underwater"
+        "07-00-0D", width: 2, height: 2, room_req: :underwater
         ),
       Rm.new("East Exit", "Somnus Reef", [
           Door.new(:left, "07-00-0D")
@@ -4104,28 +4127,28 @@ end
           Door.new(:right, "07-00-10", height: 2),
           Enemy.new("Saint Elmo", id: "01", type: ["Persistent", "Air", "Offscreen"]),
           ],
-        "07-00-0F", height: 2, room_req: "underwater"
+        "07-00-0F", height: 2, room_req: :underwater
         ),
       Rm.new("Lorelai Chamber", "Somnus Reef", [
           Door.new(:left, "07-00-0F"),
           Door.new(:right, "07-00-08"),
           Enemy.new("Lorelai", id: "01", type: ["Guard", "Air", "Vanguard"]),
           ],
-        "07-00-10", room_req: "underwater"
+        "07-00-10", room_req: :underwater
         ),
       Rm.new("Southwest Teleporter", "Somnus Reef", [
           Door.new(:right, "07-00-12"),
           ],
-        "07-00-11", room_req: "underwater", room_type: :teleporter
+        "07-00-11", room_req: :underwater, room_type: :teleporter
         ),
       Rm.new("Southwest Ghost Room", "Somnus Reef", [
           Door.new(:left, "07-00-11", height: 2),
           Door.new(:up, "07-00-0F"),
-          Item.new("HEART Max Up"),
+          Item.new("HEART Max Up", id: "01"),
           Door.new(:right, "07-01-00", height: 2),
           Enemy.new("Saint Elmo", id: "03", type: ["Persistent", "Air"]),
           ],
-        "07-00-12", width: 3, height: 2, room_req: "underwater"
+        "07-00-12", width: 3, height: 2, room_req: :underwater
         ),
       Rm.new("Southeast Ghost Room", "Somnus Reef", [
           Door.new(:left, "07-01-04"),
@@ -4135,20 +4158,20 @@ end
           Enemy.new("Edimmu", id: "03", type: "Seeker"),
           Enemy.new("Saint Elmo", id: "04", type: ["Persistent", "Air"]),
           ],
-        "07-00-13", width: 3, height: 2, room_req: "underwater"
+        "07-00-13", width: 3, height: 2, room_req: :underwater
         ),
       Rm.new("East HP Room", "Somnus Reef", [
           Door.new(:left, "07-00-13"),
-          Item.new("HP Max Up")
+          Item.new("HP Max Up", id: "00")
           ],
-        "07-00-14", room_req: "underwater"
+        "07-00-14", room_req: :underwater
         ),
       Rm.new("Fish Chamber", "Somnus Reef", [
           Door.new(:left, "07-00-0C"),
           Door.new(:right, "07-00-16"),
           Enemy.new("Edimmu", id: "00", type: ["Seeker", "Vanguard"]),
           ],
-        "07-00-15", room_req: "underwater"
+        "07-00-15", room_req: :underwater
         ),
       Rm.new("Southeast Starfish Shaft", "Somnus Reef", [
           Door.new(:left, "07-00-15", height: 4),
@@ -4157,38 +4180,38 @@ end
           Enemy.new("Decarabia", id: "02", type: ["Guard", "Ambush", "Platform"]),
           Enemy.new("Decarabia", id: "03", type: ["Guard", "Platform"]),
           ],
-        "07-00-16", room_req: "underwater"
+        "07-00-16", room_req: :underwater
         ),
       ],[
       Rm.new("West Rusalka Loading", "Somnus Reef", [
           Door.new(:left, "07-00-12"),
           Door.new(:right, "07-01-01"),
           ],
-        "07-01-00", room_req: "underwater", room_type: :loading
+        "07-01-00", room_req: :underwater, room_type: :loading
         ),
       Rm.new("Rusalka Save", "Somnus Reef", [
           Door.new(:left, "07-01-00"),
           Door.new(:right, "07-01-02"),
           ],
-        "07-01-01", room_req: "underwater", room_type: :save
+        "07-01-01", room_req: :underwater, room_type: :save
         ),
       Rm.new("Rusalka Boss Room", "Somnus Reef", [
           Door.new(:left, "07-01-01"),
           Door.new(:right, "07-01-03"),
           ],
-        "07-01-02", width: 2, room_req: "beatRusalka", is_important: true
+        "07-01-02", width: 2, room_req: :beatRusalka, is_important: true
         ),
       Rm.new("Rusalka Exit", "Somnus Reef", [
           Door.new(:left, "07-01-02"),
           Door.new(:right, "07-01-04"),
           ],
-        "07-01-03", room_req: "underwater"
+        "07-01-03", room_req: :underwater
         ),
       Rm.new("East Rusalka Loading", "Somnus Reef", [
           Door.new(:left, "07-01-03"),
           Door.new(:right, "07-00-13"),
           ],
-        "07-01-04", room_req: "underwater", room_type: :loading
+        "07-01-04", room_req: :underwater, room_type: :loading
         ),
     ] ]
   end
@@ -4202,7 +4225,7 @@ end
         ),
       Rm.new("West Gate", "Giant's Dwelling", [
           Door.new(:left, "0D-00-01"),
-          Door.new(:right, "0D-00-02"),
+          Door.new(:right, "0D-00-03"),
           Enemy.new("Skeleton Beast", id: "00", type: ["Guard", "Vanguard"]),
           Enemy.new("Ectoplasm", id: "01", type: ["Seeker", "Vanguard"]),
           Enemy.new("Ectoplasm", id: "02", type: ["Seeker", "Vanguard"]),
@@ -4217,15 +4240,16 @@ end
       Rm.new("West Building Entrance", "Giant's Dwelling", [
           Door.new(:left, "0D-00-01"),
           Door.new(:right, "0D-00-04", subroom: "Bottom"),
-          Item.new("Temperance Ring"),
+          Item.new("Temperance Ring", id: "01"),
           Enemy.new("Ladycat", id: "02", type: "Vanguard"),
           ],
         "0D-00-03"
         ),
       Rm.new("West Building Lobby Top", "Giant's Dwelling", [
-          Door.new(:left, "0D-00-02", "smallDistance"),
-          Door.new(:right, "0D-00-05", "smallDistance"),
+          Door.new(:left, "0D-00-02"), #smallDistance
+          Door.new(:right, "0D-00-05"), #smallDistance
           Door.new(:down, "0D-00-04", subroom: "Bottom"),
+          Item.new("Caprine", id: "00"),
           Enemy.new("Automaton ZX26", id: "02", type: ["Guard", "Vanguard"]),
           Enemy.new("Ectoplasm", id: "03", type: ["Nuisance", "Platform", "Enclosed"]),
           Enemy.new("Ectoplasm", id: "04", type: ["Nuisance", "Platform", "Enclosed", "CollisionIssue"]),
@@ -4240,7 +4264,7 @@ end
           Door.new(:up, "0D-00-04", subroom: "Top"),
           Enemy.new("Ladycat", id: "01", type: ["Vanguard", "Semi-Enclosed"]),
           ],
-        "0D-00-04", "West Building Lobby", room_req: "highJump", width: 2
+        "0D-00-04", "West Building Lobby", room_req: :highJump, width: 2
         ),
       Rm.new("Daniela's Room", "Giant's Dwelling", [
           Door.new(:left, "0D-00-04", subroom: "Top"),
@@ -4249,7 +4273,7 @@ end
         ),
       Rm.new("Vol Secare Room", "Giant's Dwelling", [
           Door.new(:left, "0D-00-13"),
-          Item.new("Vol Secare"),
+          Item.new("Vol Secare", id: "00"),
           ],
         "0D-00-06"
         ),
@@ -4262,7 +4286,7 @@ end
       Rm.new("Albus Room", "Giant's Dwelling", [
           Door.new(:left, "0D-00-07"),
           Door.new(:right, "0D-00-09"),
-          Item.new("Dominus Anger")
+          Item.new("Dominus Anger", id: "00")
           ],
         "0D-00-08", width: 2
         ),
@@ -4295,7 +4319,7 @@ end
       Rm.new("East Graves", "Giant's Dwelling", [
           Door.new(:left, "0D-00-0B", subroom: "Bottom"),
           Door.new(:right, "0D-00-0D"),
-          Item.new("Black Drops", "highJump"),
+          Item.new("Black Drops", :highJump, id: "00"),
           Enemy.new("Zombie", id: "01", type: ["Guard", "Ambush"]),
           Enemy.new("Zombie", id: "02", type: ["Guard", "Ambush"]),
           Enemy.new("Zombie", id: "03", type: ["Guard", "Ambush"]),
@@ -4469,8 +4493,8 @@ end
         "0B-00-0A", room_type: :teleporter
         ),
       Rm.new("Ascent Top", "Tristis Pass", [
-          Door.new(:left, "0B-00-0C", "highJump", height: 2),
-          Door.new(:right, "0B-00-0A", "highJump", height: 2),
+          Door.new(:left, "0B-00-0C", :highJump, height: 2),
+          Door.new(:right, "0B-00-0A", :highJump, height: 2),
           Door.new(:down, "0B-00-08"),
           Enemy.new("Arachne", id: "00", type: ["Range", "Vanguard"]),
           Enemy.new("Arachne", id: "01", type: ["Range", "Vanguard"]),
@@ -4493,8 +4517,8 @@ end
       Rm.new("Slope Mid Right", "Tristis Pass", [
           Door.new(:left, "0B-00-0E", height: 3),
           Door.new(:right, "0B-00-0C"),
-          Item.new("Vol Hasta"),
-          Item.new("Chariot Ring"),
+          Item.new("Vol Hasta", id: "00"),
+          Item.new("Chariot Ring", id: "01"),
           Enemy.new("Thunder Demon", id: "04", type: "Nuisance"),
           Enemy.new("Thunder Demon", id: "05", type: ["Nuisance", "Platform", "Passthrough"]),
           Enemy.new("Owl", id: "06", type: ["Seeker", "Platform", "Passthrough"]),
@@ -4520,9 +4544,9 @@ end
       Rm.new("Slope Far Left", "Tristis Pass", [
           Door.new(:left, "0B-00-10", height: 3),
           Door.new(:right, "0B-00-0E"),
-          Item.new("MP Max Up"),
-          Item.new("Inire Pecunia"),
-          Item.new("Body Suit"),
+          Item.new("MP Max Up", id: "02"),
+          Item.new("Inire Pecunia", id: "00"),
+          Item.new("Body Suit", id: "01"),
           Enemy.new("Owl", id: "04", type: ["Seeker", "Platform", "Passthrough"]),
           Enemy.new("Owl", id: "05", type: ["Seeker", "Platform", "Passthrough"]),
           Enemy.new("Owl", id: "06", type: ["Seeker", "Platform", "Passthrough"]),
@@ -4553,20 +4577,20 @@ end
         ),
       Rm.new("Waterfall Top", "Tristis Pass", [
           Door.new(:down, "0B-01-02", width: 2),
-          Item.new("Vol Grando", "hasMagnes"),
+          Item.new("Vol Grando", id: "01"),
           ],
         "0B-01-01", width: 2, height: 2
         ),
       Rm.new("Waterfall Bottom", "Tristis Pass", [
-          Door.new(:left, "0B-01-03", "waterfall", height: 3),
-          Door.new(:left, "0B-01-04", "waterfall"),
-          Door.new(:right, "0B-01-00", "waterfall"),
-          Door.new(:up, "0B-01-01", "highJump"),
-          Item.new("HEART Max Up", "waterfall"),
-          Item.new("Amanita", "waterfall"),
-          Item.new("Lovers Ring", "waterfall"),
+          Door.new(:left, "0B-01-03", height: 3),
+          Door.new(:left, "0B-01-04"),
+          Door.new(:right, "0B-01-00"),
+          Door.new(:up, "0B-01-01"),
+          Item.new("HEART Max Up", id: "01"),
+          Item.new("Amanita", id: "03"),
+          Item.new("Lovers Ring", id: "00"),
           ],
-        "0B-01-02", height: 4
+        "0B-01-02", height: 4, room_req: :tristisWaterfall
         ),
       Rm.new("Irina's Room", "Tristis Pass", [
           Door.new(:right, "0B-01-02"),
@@ -4583,7 +4607,7 @@ end
         ),
       Rm.new("HP Room", "Tristis Pass", [
           Door.new(:right, "0B-01-06"),
-          Item.new("HP Max Up"),
+          Item.new("HP Max Up", id: "00"),
           Enemy.new("White Dragon", id: "01", type: ["Range", "Wall", "MustMove"]),
           ],
         "0B-01-05"
@@ -4597,9 +4621,9 @@ end
         "0B-01-06", width: 2
         ),
       Rm.new("Ectoplasm Stairs", "Tristis Pass", [
-          Door.new(:left, "0B-00-07", "highJump", height: 4),
+          Door.new(:left, "0B-00-07", :highJump, height: 4),
           Door.new(:left, "0B-01-06"),
-          Item.new("Onyx"),
+          Item.new("Onyx", id: "01"),
           Enemy.new("Ectoplasm", id: "02", type: ["Seeker", "Platform"]),
           Enemy.new("Ectoplasm", id: "03", type: ["Seeker", "Platform", "Separated"]),
           Enemy.new("Ectoplasm", id: "04", type: ["Seeker", "Platform", "Passthrough", "Vanguard"]),
@@ -4676,6 +4700,109 @@ end
     ] ]
   end
 
+  def self.ecclesia_rooms
+    ecclesia_rooms = [ [
+      Rm.new("Tutorial Start", "Ecclesia", [
+          Door.new(:right, "02-00-01"),
+          Item.new("Record 5", id: "04"),
+          ],
+        "02-00-00", width: 2, is_important: true
+        ),
+      Rm.new("Tutorial Skeletons", "Ecclesia", [
+          Door.new(:left, "02-00-00"),
+          Door.new(:right, "02-00-02"),
+          ],
+        "02-00-01", width: 2, is_important: true
+        ),
+      Rm.new("Tutorial End", "Ecclesia", [
+          Door.new(:left, "02-00-01"),
+          Door.new(:right, "02-00-04"),
+          ],
+        "02-00-02", width: 2, is_important: true
+        ),
+      Rm.new("Entrance", "Ecclesia", [
+          Door.new(:right, "02-00-04"),
+          ],
+        "02-00-03", room_type: :entrance, is_important: true
+        ),
+      Rm.new("Hub", "Ecclesia", [
+          Door.new(:left, "02-00-02", height: 2),
+          Door.new(:left, "02-00-03"),
+          Door.new(:right, "02-00-06", height: 3),
+          Door.new(:right, "02-00-05", height: 2),
+          Item.new("Record 1", id: "05"),
+          Item.new("Glyph Sleeve", id: "07"),
+          ],
+        "02-00-04", height: 3, is_important: true
+        ),
+      Rm.new("Save Room", "Ecclesia", [
+          Door.new(:left, "02-00-04"),
+          ],
+        "02-00-05"
+        ),
+      Rm.new("Boss Room", "Ecclesia", [
+          Door.new(:left, "02-00-04"),
+          ],
+        "02-00-06", width: 2, is_important: true
+        ),
+    ] ]
+  end
+
+  def self.lighthouse_rooms
+    lighthouse_rooms = [ [
+      Rm.new("Entrance", "Lighthouse", [
+          Door.new(:right, "09-00-01"),
+          ],
+        "09-00-00", room_req: :lighthouse, room_type: :entrance, is_important: true, width: 3
+        ),
+      Rm.new("Pre-Boss", "Lighthouse", [
+          Door.new(:left, "09-00-00"),
+          Door.new(:right, "09-00-05"),
+          ],
+        "09-00-01"
+        ),
+      Rm.new("West Balcony", "Lighthouse", [
+          Door.new(:right, "09-00-03", height: 2),
+          Door.new(:right, "09-00-05"),
+          ],
+        "09-00-02", height: 2
+        ),
+      Rm.new("Top", "Lighthouse", [
+          Door.new(:left, "09-00-02"),
+          Door.new(:right, "09-00-04"),
+          Item.new("Luminatio", id: "00"),
+          ],
+        "09-00-03"
+        ),
+      Rm.new("East Balcony", "Lighthouse", [
+          Door.new(:left, "09-00-03", height: 2),
+          Door.new(:left, "09-00-05"),
+          ],
+        "09-00-04", height: 2
+        ),
+      Rm.new("Boss Room", "Lighthouse", [
+          Door.new(:left, "09-00-02", height: 14),
+          Door.new(:left, "09-00-01"),
+          Door.new(:right, "09-00-04", height: 14),
+          Door.new(:right, "09-00-06"),
+          ],
+        "09-00-05", is_important: true, room_req: :beatCrab, height: 14
+        ),
+      Rm.new("Eugen's Room", "Lighthouse", [
+          Door.new(:left, "09-00-05", height: 2),
+          Door.new(:left, "09-00-07"),
+          ],
+        "09-00-06", height: 2
+        ),
+      Rm.new("Exit", "Lighthouse", [
+          Door.new(:right, "09-00-06"),
+          Item.new("Serpent Scale", id: "01"),
+          ],
+        "09-00-07", is_important: true
+        ),
+    ] ]
+  end
+
   self.castle_rooms
   self.training_hall_rooms
   self.forest_rooms
@@ -4691,4 +4818,6 @@ end
   self.giants_rooms
   self.tristis_rooms
   self.argila_rooms
+  self.ecclesia_rooms
+  self.lighthouse_rooms
 end
