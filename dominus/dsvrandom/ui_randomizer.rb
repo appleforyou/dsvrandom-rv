@@ -95,6 +95,7 @@ class Ui_Randomizer
     attr_reader :rv_split_pools
     attr_reader :rv_puzzle_progression
     attr_reader :rv_randomize_quest_rewards
+    attr_reader :rv_hard_mode_boss_ai
     attr_reader :patch_folder
     attr_reader :patch_folder_browse_button
     attr_reader :unrandomize_button
@@ -108,6 +109,7 @@ class Ui_Randomizer
     attr_reader :rv_arthrovertas_revenge
     attr_reader :rv_hint_cat_locations
     attr_reader :rv_trick_sleeve
+    attr_reader :rv_enemy_randomizer_style
     attr_reader :reveal_enemy_info
     attr_reader :version_selector
     attr_reader :version_label
@@ -499,6 +501,12 @@ class Ui_Randomizer
 
     @gridLayout_2.addWidget(@always_dowsing, 1, 2, 1, 1)
 
+    @rv_hard_mode_boss_ai = Qt::CheckBox.new(@groupBox_4)
+    @rv_hard_mode_boss_ai.objectName = "rv_hard_mode_boss_ai"
+    @rv_hard_mode_boss_ai.checked = false
+
+    @gridLayout_2.addWidget(@rv_hard_mode_boss_ai, 0, 3, 1, 1)
+
     @verticalLayout_7.addWidget(@groupBox_4)
 
     @groupBox_8 = Qt::GroupBox.new(@tab_3)
@@ -529,6 +537,14 @@ class Ui_Randomizer
     @randomize_enemy_locations.checked = false
 
     @gridLayout_10.addWidget(@randomize_enemy_locations, 1, 1, 1, 1)
+
+    #@rv_enemy_randomizer_style_label = Qt::Label.new(@groupBox_10)
+    #@rv_enemy_randomizer_style_label.objectName = "rv_enemy_randomizer_style_label"
+    #@gridLayout_10.addWidget(@rv_enemy_randomizer_style_label, 0, 2, 1, 1)
+
+    @rv_enemy_randomizer_style = Qt::ComboBox.new(@groupBox_10)
+    @rv_enemy_randomizer_style.objectName = "rv_enemy_randomizer_style"
+    @gridLayout_10.addWidget(@rv_enemy_randomizer_style, 1, 2, 1, 1)
 
     @rv_hint_cat_label = Qt::Label.new(@tab_3)
     @rv_hint_cat_label.objectName = "rv_hint_cat_label"
@@ -757,7 +773,7 @@ class Ui_Randomizer
     @groupBox_7.title = Qt::Application.translate("Randomizer", "Progression randomization options", nil, Qt::Application::UnicodeUTF8)
     @randomize_pickups.text = Qt::Application.translate("Randomizer", "Randomize Item/Skill Locations", nil, Qt::Application::UnicodeUTF8)
 
-    @randomize_enemy_locations.text = Qt::Application.translate("Randomizer", "Randomize Enemy Locations", nil, Qt::Application::UnicodeUTF8)
+    @randomize_enemy_locations.text = Qt::Application.translate("Randomizer", "Randomize Enemy Locations               Style:", nil, Qt::Application::UnicodeUTF8)
 
     @rv_open_castle.text = Qt::Application.translate("Randomizer", "Open World Map + Dracula's Castle", nil, Qt::Application::UnicodeUTF8)
     @rv_unlock_albus.text = Qt::Application.translate("Randomizer", "Unlock Albus/Barlowe", nil, Qt::Application::UnicodeUTF8)
@@ -767,6 +783,7 @@ class Ui_Randomizer
     @rv_randomize_quest_rewards.text = Qt::Application.translate("Randomizer", "Quest Reward Items", nil, Qt::Application::UnicodeUTF8)
     @rv_arthrovertas_revenge.text = Qt::Application.translate("Randomizer", "Arthroverta's Revenge", nil, Qt::Application::UnicodeUTF8)
     @rv_trick_sleeve.text = Qt::Application.translate("Randomizer", "Trick Sleeve", nil, Qt::Application::UnicodeUTF8)
+    @rv_hard_mode_boss_ai.text = Qt::Application.translate("Randomizer", "Boss AI = Hard Mode", nil, Qt::Application::UnicodeUTF8)
     @reveal_enemy_info.text = Qt::Application.translate("Randomizer", "Reveal Enemy Info", nil, Qt::Application::UnicodeUTF8)
     @patch_label.text = Qt::Application.translate("Randomizer", "Patch Folder", nil, Qt::Application::UnicodeUTF8)
     @patch_folder_browse_button.text = Qt::Application.translate("Randomizer", "Browse", nil, Qt::Application::UnicodeUTF8)
@@ -785,6 +802,14 @@ class Ui_Randomizer
     @rv_hint_cat_locations.addItem("Rebalanced Locations")
     @rv_hint_cat_locations.addItem("Randomized Among Villager Locations")
     @rv_hint_cat_locations.setCurrentIndex(1)
+    #@rv_enemy_randomizer_style_label.text = Qt::Application.translate("Randomizer", "Enemy Randomizer Style", nil, Qt::Application::UnicodeUTF8)
+    #@rv_enemy_randomizer_style_label.toolTip = Qt::Application.translate("Randomizer", "Determines the rules the enemy randomizer will follow when adjusting enemy locations, etc. Vanilla is less likely to pick stronger enemies, while Creative has more variety.", nil, Qt::Application::UnicodeUTF8)
+    @rv_enemy_randomizer_style.toolTip = Qt::Application.translate("Randomizer", "Determines the rules the enemy randomizer will follow when adjusting enemy locations, etc. Vanilla is less likely to pick stronger enemies, while Creative has more variety.", nil, Qt::Application::UnicodeUTF8)
+    @rv_enemy_randomizer_style.addItem("Match Item Location Preset")
+    @rv_enemy_randomizer_style.addItem("Vanilla")
+    @rv_enemy_randomizer_style.addItem("Creative")
+    @rv_enemy_randomizer_style.setCurrentIndex(0)
+
 
     @version_label.text = Qt::Application.translate("Randomizer", "Dominus Version", nil, Qt::Application::UnicodeUTF8)
     @version_label.toolTip = Qt::Application.translate("Randomizer", "Select the version of your Dominus Collection on Steam. It will be displayed on the main splash screen. 1.0 is not supported yet.", nil, Qt::Application::UnicodeUTF8)
