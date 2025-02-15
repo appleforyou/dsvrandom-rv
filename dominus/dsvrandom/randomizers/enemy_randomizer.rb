@@ -948,6 +948,11 @@ class EnemyRandomizer
     @game = game
     @dra03 = game.dra03
 
+    @enemy_randomizer_style = @game.options[:rv_enemy_randomizer_style]
+    if @enemy_randomizer_style == "Match Item Location Preset"
+      @enemy_randomizer_style = @game.options[:rv_difficulty]
+    end
+
 =begin
     game.enemy_dnas.each do |enemy_dna|
       c = 0
@@ -1039,7 +1044,7 @@ class EnemyRandomizer
 
       @allowed_enemies_for_room.select! do |enemy_id|
         enemy_dna = @game.enemy_dnas[enemy_id]
-        if enemy_dna.atk <= 0x1E and @game.options[:rv_difficulty] != "Vanilla"
+        if enemy_dna.atk <= 0x1E and @enemy_randomizer_style != "Vanilla"
           # Always allow weak enemies in the room. Don't do this for Vanilla difficulty to slightly lower Forest/Monastery difficulty.
           true
         elsif enemy_dna.atk <= remaining_new_room_difficulty && enemy_dna.atk <= max_allowed_enemy_attack
@@ -1196,7 +1201,7 @@ class EnemyRandomizer
     remaining_new_room_difficulty = original_room_difficulty*room_multiplier
 
     # Only allow enemies up to a certain multiplier higher than the strongest enemy in the original room.
-    max_multiplier = @game.options[:rv_difficulty] == "Vanilla" ? 1.2 : 1.3
+    max_multiplier = @enemy_randomizer_style == "Vanilla" ? 1.2 : 1.3
     max_allowed_enemy_attack = max_enemy_attack*max_multiplier
 
     if max_enemy_attack > 60
@@ -1606,7 +1611,7 @@ class EnemyRandomizer
     airborne_enemies = ["Bat", "Ghost", "Banshee", "Sea Stinger", "Nominon", "Gelso", "Needles", "Demon", "Killer Fish", "Forneus", "Black Crow", "Sea Demon", "Winged Guard", "Nightmare", "Fire Demon", "Bitterfly", "Specter", "Black Fomor",
      "Saint Elmo", "Lorelai", "Edimmu", "Ectoplasm", "Curse Diva", "Miss Murder", "Balloon", "Thunder Demon", "Owl", "Altair", "Jersey Devil", "White Fomor", "Evil Force", "Peeping Eye", "Polkir", "Imp", "Bugbear",
      "Spectral Sword", "Medusa Head", "Gorgon Head", "Winged Skeleton", "Demon Lord"]
-    if loc.type.include?("AirOnly") and not airborne_enemies.include?(enemy_dna.name)
+    if (loc.type.include?("AirOnly") or (loc.type.include?("Divekick") and @game.options[:rv_difficulty] == "Do Your Worst")) and not airborne_enemies.include?(enemy_dna.name)
       return :redo
     end
     if loc.type.include?("Offscreen") and not (SPAWNER_ENEMY_IDS.include?(enemy_dna.enemy_id) and airborne_enemies.include?(enemy_dna.name))
