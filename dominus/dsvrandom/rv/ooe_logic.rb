@@ -20,6 +20,10 @@ class OoELogic
   def villagerCount(n)
     return true #todo
   end
+
+  def hasParies
+    hasItem("Paries")
+  end
   
   def hasSlash
     hasItemLine("Confodere") || hasItemLine("Secare") || hasItemLine("Hasta") || hasItemLine("Falcis") || hasItem("Arma Felix") || hasItem("Arma Chiroptera")
@@ -101,13 +105,38 @@ class OoELogic
   def castleEntry
     highJump() && (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(6)) || gearExceeds(12))
   end
+
+  def castleEntryGear
+    (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(6)) || gearExceeds(12))
+  end
   
   def castleEntranceEast
     castleEntry() && hasItem("Paries") && (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(9)) || gearExceeds(12))
   end
+
+  def castleEntranceEastGear
+   (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(9)) || gearExceeds(12))
+  end
   
   def beatBlackmore
     castleEntranceEast() && ( hasFire() || hasLight() ) && (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(11)) || gearExceeds(14))
+  end
+
+  def beatBlackmoreGear
+    ( hasFire() || hasLight() ) && (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(11)) || gearExceeds(14))
+  end
+
+  #todo
+  def beatNovas
+    true
+  end
+
+  alias beatArmor beatNovas
+
+  alias beatLizards beatNovas
+
+  def lapistePuzzle
+    hasItem("Paries") || hasFlight()
   end
   
   def mechTower
@@ -240,7 +269,6 @@ class OoELogic
     (highJump() || smallDistance()) && (@options[:rv_difficulty] == "Do Your Worst" || (@options[:rv_difficulty] == "Creative" && gearExceeds(8)) || gearExceeds(12))
   end
   
-  #Todo: include logic for the battle itself
   def beatAlbus
     mysteryManor && (@options[:rv_difficulty] == "Do Your Worst" || (gearExceeds(12) && (hasSlash || hasDark))) && (@options[:rv_unlock_albus] || (kalidusDepths() && tristisWaterfall() && giantsDwelling))
   end
@@ -263,6 +291,11 @@ class OoELogic
   
   def beatFish
     @options[:rv_difficulty] == "Do Your Worst" || gearExceeds(14) || (gearExceeds(10) && (hasStrike() || hasIce()))
+  end
+
+  #todo
+  def beatArthroverta
+    true
   end
   
   alias oblivionJump mistyJumpWest
