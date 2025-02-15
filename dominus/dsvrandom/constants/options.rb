@@ -13,6 +13,7 @@ def self.options
   rv_arthrovertas_revenge: "Tired of not being fought in the randomizer, Arthroverta has decided to take the matter into its own claws... (Pickups will not spawn in the boss's room. Re-enter the room after it dies.)",
   reveal_enemy_info: "Reveals enemy data on the secondary screen which displays enemy HP/EXP/weaknesses. Also will display enemy drops if you have the relic Book of Spirits. Only handles the secondary screen for now, not the bestiary in the pause menu.",
   rv_trick_sleeve: "Glyph sleeve is made a default feature, and a new sleeve relic is added from a list of random options.",
+  rv_hard_mode_boss_ai: "Bosses will always use their Hard Mode attacks instead of behaving like Normal Mode bosses. Does not change damage calculation like Hard Mode does.",
 
 
   randomize_pickups: "Randomizes items and glyphs you find in static locations.",
