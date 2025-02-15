@@ -329,6 +329,67 @@ class Tweaks
     if @options[:reveal_enemy_info]
       reveal_bestiary()
     end
+
+    if @options[:rv_hard_mode_boss_ai]
+      hard_mode_boss_ai()
+    end
+  end
+
+  def remove_cutscene(boss_name)
+    if boss_name == "Arthroverta"
+      @dra03[0x97d97] = nop(2)
+    end
+  end
+
+  def hard_mode_boss_ai()
+    # Making all bosses have their hard mode AI instead of normal mode. Todo: Jiang Shi is unchecked
+    # Arthroverta
+    @dra03[0x95320] = nop(2)
+    @dra03[0x95e94] = nop(6)
+    # Giant Skeleton: no changes?
+    # Brachyura
+    @dra03[0x14214b] = nop(2)
+    # Maneater: no changes?
+    # Rusalka: no changes?
+    # Goliath
+    @dra03[0x8806b] = [0x44,0x8b,0xc6] + nop(1) #size 3 (4 in total.) MOV R8D,EDI; NOP
+    @dra03[0x880af] = [0x8b,0xfe] + nop(1) #size 2 (3 in total.) MOV EDI,ESI; NOP
+    @dra03[0x8753e] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    @dra03[0x894f6] = [0x8b,0xc2] + nop(1) #size 2 (3 in total.) MOV EAX,EDX; NOP
+    @dra03[0x88b40] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    @dra03[0x89541] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    # Albus
+    @dra03[0x19f03c] = [0x8b,0xd0] + nop(1) #size 2 (3 in total.) MOV EDX,EAX; NOP
+    @dra03[0x19f150] = nop(6)
+    @dra03[0x19f482] = nop(2)
+    # Wallman
+    @dra03[0x115ef5] = nop(2)
+    # Blackmore
+    @dra03[0x16a121] = nop(2)
+    @dra03[0x169346] = [0x41,0x8b,0xc7] + nop(1) #size 3 (4 in total.) MOV EAX,R15D; NOP
+    # Death
+    @dra03[0x913d4] = nop(2)
+    @dra03[0x907ae] = nop(2)
+    @dra03[0x90493] = [0x66,0x89,0xc8] + nop(1) #size 3 (4 in total.) MOV AX,CX; NOP
+    @dra03[0x92e87] = nop(2)
+    @dra03[0x931b5] = nop(2)
+    @dra03[0x92ecc] = nop(2)
+    # Eligor
+    @dra03[0xc4671] = [0x41,0x8b,0xc8] + nop(1) #size 3 (4 in total.) MOV ECX,R8D; NOP
+    @dra03[0xc05af] = nop(6)
+    @dra03[0xc24cd] = nop(2)
+    @dra03[0xc409b] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    @dra03[0xc6172] = [0x8b,0xc8] + nop(1) #size 2 (3 in total.) MOV ECX,EAX; NOP
+    @dra03[0xc6256] = [0x8b,0xc8] + nop(1) #size 2 (3 in total.) MOV ECX,EAX; NOP
+    @dra03[0xc6690] = [0x8b,0xca] + nop(1) #size 2 (3 in total.) MOV ECX,EDX; NOP
+    @dra03[0xc3e22] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    @dra03[0xc3e64] = [0x66,0x89,0xca] + nop(1) #size 3 (4 in total.) MOV DX,CX; NOP
+    # Dracula
+    @dra03[0xd3858] = [0x44,0x8b,0xfe] + nop(1) #size 3 (4 in total.) MOV R15D,ESI; NOP
+    @dra03[0xd3894] = [0x8b,0xc8] + nop(1) #size 2 (3 in total.) MOV ECX,EAX; NOP
+    @dra03[0xcaf90] = [0x8b,0xc1] + nop(1) #size 2 (3 in total.) MOV EAX,ECX; NOP
+    @dra03[0xcb7c6] = [0x8b,0xc8] + nop(1) #size 2 (3 in total.) MOV ECX,EAX; NOP
+    @dra03[0xccc86] = [0x66,0x89,0xc1] + nop(1) #size 3 (4 in total.) MOV CX,AX; NOP
   end
 
   def normalize_glyph_sleeve()
