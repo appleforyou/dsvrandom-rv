@@ -300,6 +300,11 @@ class Game
       #Boss rush will softlock with no Arthroverta in its room. There's nothing stopping two of the same boss from existing, but if I can fix it without two bosses I will.
       #Rough bandaid fix that auto-unlocks the teleporter until I have time to check how to change the boss rush room
       game.tweaks.fix_bossrush_arthroverta()
+
+      #If the room has an upwards door it can be difficult to enter the room.
+      if boss_room[:remove_cutscene]
+        game.tweaks.remove_cutscene("Arthroverta")
+      end
     end
 
     def get_replacement_loc(old_loc)
@@ -468,7 +473,8 @@ class Game
                        door_x: 0x10,
                        door_y: 0x80,
                        second_door_x: 0x1e0,
-                       second_door_y: 0x80
+                       second_door_y: 0x80,
+                       remove_cutscene: true
                       },
         #"0F-00-05" => { roll can almost hit, might add later
                        #boss_loc: "04",
