@@ -1,7 +1,8 @@
 module Locations
 require_relative 'ooe_logic'
 
-  attr_accessor :locs
+  attr_accessor :locs,
+                :locs_by_id
 
   def self.set_logic(obj)
     @logic = obj
@@ -9,6 +10,10 @@ require_relative 'ooe_logic'
 
   def self.locs
     @@locs
+  end
+
+  def self.locs_by_id
+    @@loc_hash
   end
 
   def self.set_locs
@@ -1655,7 +1660,7 @@ require_relative 'ooe_logic'
         container: "Chest",
         id: "10-01-01_03",
         room: "Oblivion Ridge (West Hill)",
-        available: lambda { @logic.oblivionJump() }
+        available: lambda { @logic.beatFish() and @logic.oblivionJump() }
       },
       {
         zone: "Oblivion Ridge",
@@ -1831,5 +1836,9 @@ require_relative 'ooe_logic'
         available: lambda { @logic.monasteryUpper() }
       }
     ]
+    @@loc_hash = {}
+    @@locs.each do |loc|
+      @@loc_hash[loc[:id]] = loc
+    end
   end
 end
