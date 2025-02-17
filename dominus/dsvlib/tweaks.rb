@@ -362,6 +362,25 @@ class Tweaks
     @dra03[0x19f03c] = [0x8b,0xd0] + nop(1) #size 2 (3 in total.) MOV EDX,EAX; NOP
     @dra03[0x19f150] = nop(6)
     @dra03[0x19f482] = nop(2)
+    # Barlowe
+    @dra03[0x104aae] = nop(2)
+    @dra03[0x105874] = nop(2)
+    @dra03[0x107a6f] = nop(2)
+    @dra03[0x10c0e5] = nop(2)
+    @dra03[0x107fbf] = nop(2)
+    @dra03[0x10803d] = nop(2)
+    @dra03[0x1083c8] = nop(2)
+    @dra03[0x1059cc] = [0x44,0x89,0xc0] + nop(1) #size 3 (4 in total.) MOV EAX,R8D; NOP
+    @dra03[0x1087ae] = nop(6)
+    @dra03[0x109ca0] = nop(2)
+    @dra03[0x109f07] = nop(2)
+    @dra03[0x1074eb] = nop(6)
+    @dra03[0x1045a9] = nop(2)
+    @dra03[0x1090ee] = nop(2)
+    @dra03[0x10900a] = [0x8b,0xc1] + nop(1) #size 2 (3 in total.) MOV EAX,ECX; NOP
+    @dra03[0x109544] = nop(2)
+    @dra03[0x109636] = nop(2)
+    @dra03[0x10979d] = [0x8b,0xc1] + nop(1) #size 2 (3 in total.) MOV EAX,ECX; NOP
     # Wallman
     @dra03[0x115ef5] = nop(2)
     # Blackmore
